@@ -5,6 +5,22 @@ build/
 dist/
 wheels/
 *.egg-info
+*.pyd
+
 
 # Virtual environments
 .venv
+
+
+.env
+.env.*
+
+
+
+
+# Logs
+*.log
+
+# OS/IDE
+.vscode/
+.DS_Store
