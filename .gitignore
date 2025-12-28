@@ -22,5 +22,6 @@ wheels/
 *.log
 
 # OS/IDE
-.vscode/
+# .vscode/
 .DS_Store
+.vscode
