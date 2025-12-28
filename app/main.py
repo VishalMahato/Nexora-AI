@@ -1,18 +1,31 @@
 from fastapi import FastAPI
+from sqlalchemy import text
+
 from app.config import get_settings
+from db.session import engine
+
 
 def create_app() -> FastAPI:
     app = FastAPI(title="AI Service", version="0.1.0")
 
     @app.get("/healthz")
     async def healthz():
-        s = get_settings()
+        settings = get_settings()
+
+        db_ok = True
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+        except Exception:
+            db_ok = False
+
         return {
             "ok": True,
-            "llm_model": s.LLM_MODEL,
-            "db_configured": bool(s.DATABASE_URL),
-            "web3_configured": bool(s.WEB3_SERVICE_URL),
+            "llm_model": settings.LLM_MODEL,
+            "db_ok": db_ok,
         }
 
     return app
+
+
 app = create_app()
