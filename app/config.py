@@ -10,9 +10,11 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=".env",
-        env_prefix="",   # we’ll map env vars explicitly below
+        env_prefix="",
         case_sensitive=False,
+        extra="ignore",   # ✅ ignore APP_ENV, LOG_LEVEL, etc
     )
+
 
     @property
     def DATABASE_URL(self) -> str:
