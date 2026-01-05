@@ -4,6 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from db.repos.run_steps_repo import log_step
 
 from api.schemas.runs import RunCreateRequest, RunCreateResponse, GetRunResponse, RunResponse
 from app.domain.run_status import RunStatus
@@ -32,6 +33,17 @@ def create_run_endpoint(payload: RunCreateRequest, db: Session = Depends(get_db)
         wallet_address=payload.walletAddress,
         chain_id=payload.chainId,
     )
+
+    # ---- F6 minimal proof: log first step ----
+    log_step(
+        db,
+        run_id=run.id,
+        step_name="RUN_CREATED",
+        status="DONE",
+        output={"status": run.status},
+        agent="API",
+    )
+
     return RunCreateResponse(runId=run.id, status=run.status)
 
 
