@@ -37,3 +37,4 @@ def assert_valid_transition(frm: RunStatus, to: RunStatus) -> None:
 
     if to not in ALLOWED.get(frm, set()):
         raise ValueError(f"Invalid status transition: {frm} -> {to}")
+    
