@@ -8,6 +8,8 @@ from app.main import create_app
 from db.session import SessionLocal
 from db.models.run import Run
 from app.domain.run_status import RunStatus
+from db.repos.run_steps_repo import list_steps_for_run
+from db.session import SessionLocal
 
 
 @pytest.fixture()
@@ -79,3 +81,23 @@ def test_get_v1_runs_unknown_id_404(client):
     unknown = uuid.uuid4()
     resp = client.get(f"/v1/runs/{unknown}")
     assert resp.status_code == 404
+
+def test_post_v1_runs_creates_initial_step(client):
+    payload = {
+        "intent": "Swap 50 USDC to ETH",
+        "walletAddress": "0xabc123",
+        "chainId": 1,
+    }
+
+    resp = client.post("/v1/runs", json=payload)
+    assert resp.status_code == 200
+
+    run_id = resp.json()["runId"]
+
+    db = SessionLocal()
+    try:
+        steps = list_steps_for_run(db, run_id=run_id)
+        assert len(steps) >= 1
+        assert steps[0].step_name == "RUN_CREATED"
+    finally:
+        db.close()
