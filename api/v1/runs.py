@@ -10,6 +10,7 @@ from api.schemas.runs import RunCreateRequest, RunCreateResponse, GetRunResponse
 from app.domain.run_status import RunStatus
 from db.deps import get_db
 from db.repos.runs_repo import create_run, get_run
+from db.repos.tool_calls_repo import log_tool_call
 
 
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -33,16 +34,29 @@ def create_run_endpoint(payload: RunCreateRequest, db: Session = Depends(get_db)
         wallet_address=payload.walletAddress,
         chain_id=payload.chainId,
     )
+    created_step = log_step(
+    db,
+    run_id=run.id,
+    step_name="RUN_CREATED",
+    status="DONE",
+    output={"status": run.status},
+    agent="API",
+    )
 
-    # ---- F6 minimal proof: log first step ----
-    log_step(
+    # ---- F7 minimal proof: fake tool call ----
+    log_tool_call(
         db,
         run_id=run.id,
-        step_name="RUN_CREATED",
-        status="DONE",
-        output={"status": run.status},
-        agent="API",
+        step_id=created_step.id,
+        tool_name="api_create_run",
+        request={
+            "intent": payload.intent,
+            "walletAddress": payload.walletAddress,
+            "chainId": payload.chainId,
+        },
+        response={"run_id": str(run.id)},
     )
+
 
     return RunCreateResponse(runId=run.id, status=run.status)
 
