@@ -10,6 +10,8 @@ from db.models.run import Run
 from app.domain.run_status import RunStatus
 from db.repos.run_steps_repo import list_steps_for_run
 from db.session import SessionLocal
+from db.session import SessionLocal
+from db.repos.tool_calls_repo import list_tool_calls_for_run
 
 
 @pytest.fixture()
@@ -99,5 +101,25 @@ def test_post_v1_runs_creates_initial_step(client):
         steps = list_steps_for_run(db, run_id=run_id)
         assert len(steps) >= 1
         assert steps[0].step_name == "RUN_CREATED"
+    finally:
+        db.close()
+        
+def test_post_v1_runs_creates_tool_call(client):
+    payload = {
+        "intent": "Swap 50 USDC to ETH",
+        "walletAddress": "0xabc123",
+        "chainId": 1,
+    }
+
+    resp = client.post("/v1/runs", json=payload)
+    assert resp.status_code == 200
+
+    run_id = resp.json()["runId"]
+
+    db = SessionLocal()
+    try:
+        calls = list_tool_calls_for_run(db, run_id=run_id)
+        assert len(calls) >= 1
+        assert calls[0].tool_name == "api_create_run"
     finally:
         db.close()
