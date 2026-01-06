@@ -7,6 +7,14 @@ class Settings(BaseSettings):
     database_url: str = ""
     web3_service_url: str = ""
     llm_model: str = "gpt-4o-mini"  # safe default- override via env
+    # --- observability ---
+    log_level: str = "INFO"
+    log_json: bool = False
+
+    langsmith_tracing: bool = False
+    langsmith_api_key: str = ""
+    langsmith_project: str = "nexora-ai"
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
 
     model_config = SettingsConfigDict(
         env_file=".env",

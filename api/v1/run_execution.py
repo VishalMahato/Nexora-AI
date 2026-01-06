@@ -1,5 +1,7 @@
+# api/v1/run_execution.py
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,9 +9,16 @@ from sqlalchemy.orm import Session
 
 from db.deps import get_db
 from db.models.run import RunStatus
-from db.repos.runs_repo import RunStatusConflictError, RunNotFoundError, get_run, update_run_status
+from db.repos.runs_repo import (
+    RunNotFoundError,
+    RunStatusConflictError,
+    get_run,
+    update_run_status,
+)
 from graph.graph import run_graph
 from graph.state import RunState
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["runs"])
 
@@ -20,7 +29,12 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
     Minimal synchronous execution:
     CREATED -> RUNNING -> AWAITING_APPROVAL (on success)
     CREATED -> RUNNING -> FAILED (on exception)
+
+    Note:
+    run_id context is handled by middleware (no manual set_run_id here).
     """
+    logger.info("start_run called")
+
     run = get_run(db, run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -50,21 +64,25 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
         state = RunState(
             run_id=run.id,
             intent=run.intent,
-            status=RunStatus.RUNNING,
+            status=RunStatus.RUNNING.value,
         )
-
 
         final_state = run_graph(db, state)
 
-        # ✅ FSM-correct success transition from RUNNING
+        #  FSM-correct success transition from RUNNING
         update_run_status(
             db,
             run_id=run_id,
             to_status=RunStatus.AWAITING_APPROVAL,
             expected_from=RunStatus.RUNNING,
         )
-        
-        artifacts = final_state.artifacts if hasattr(final_state, "artifacts") else final_state.get("artifacts", {})
+
+        artifacts = (
+            final_state.artifacts
+            if hasattr(final_state, "artifacts")
+            else final_state.get("artifacts", {})
+        )
+
         return {
             "ok": True,
             "runId": str(run.id),

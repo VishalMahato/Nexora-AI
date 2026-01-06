@@ -1,6 +1,9 @@
+# app/main.py
 from fastapi import FastAPI, APIRouter
 from sqlalchemy import text
-
+from app.core.logging import configure_logging
+from app.core.langsmith import configure_langsmith
+from app.core.middleware import RunContextMiddleware  
 from app.config import get_settings
 from db.session import engine
 from api.v1.runs import router as runs_router
@@ -8,7 +11,13 @@ from api.v1.run_execution import router as run_execution_router
 
 
 def create_app() -> FastAPI:
+    configure_logging()
+    configure_langsmith()
+
     app = FastAPI(title="Nexora AI", version="0.1.0")
+
+    # request-scoped run_id context
+    app.add_middleware(RunContextMiddleware)
 
     @app.get("/healthz")
     async def healthz():
