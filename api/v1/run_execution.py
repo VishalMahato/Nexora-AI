@@ -57,19 +57,18 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
     except RunNotFoundError:
         raise HTTPException(status_code=404, detail="Run not found")
     except (RunStatusConflictError, ValueError) as e:
-        # conflict or invalid transition
         raise HTTPException(status_code=409, detail=str(e))
 
     try:
         state = RunState(
             run_id=run.id,
             intent=run.intent,
-            status=RunStatus.RUNNING.value,
+            status=RunStatus.RUNNING.value,  # RunState.status is str
         )
 
         final_state = run_graph(db, state)
 
-        #  FSM-correct success transition from RUNNING
+        # FSM-correct success transition from RUNNING
         update_run_status(
             db,
             run_id=run_id,
@@ -102,7 +101,6 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
                 error_message=f"{type(e).__name__}: {e}",
             )
         except Exception:
-            # don't hide the original error if status update fails
             pass
 
         raise HTTPException(
