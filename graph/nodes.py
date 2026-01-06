@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
-from langchain_core.runnables import RunnableConfig  # 👈 import this
+from langchain_core.runnables import RunnableConfig
 
 from graph.state import RunState
 from db.repos.run_steps_repo import log_step
@@ -11,8 +11,7 @@ def input_normalize(state: RunState, config: RunnableConfig) -> RunState:
     """
     Normalize user intent.
     """
-    # Get DB session from configurable context
-    db: Session = config["configurable"]["db"]
+    db: Session = config["configurable"]["db"]   # 👈 pulled from config
 
     # ---- STEP START ----
     log_step(
@@ -25,6 +24,7 @@ def input_normalize(state: RunState, config: RunnableConfig) -> RunState:
     )
 
     normalized_intent = state.intent.strip()
+
     state.artifacts["normalized_intent"] = normalized_intent
 
     # ---- STEP DONE ----
@@ -44,8 +44,7 @@ def finalize(state: RunState, config: RunnableConfig) -> RunState:
     """
     Final no-op node.
     """
-    db: Session = config["configurable"]["db"]
-
+    db: Session = config["configurable"]["db"]  
     log_step(
         db,
         run_id=state.run_id,

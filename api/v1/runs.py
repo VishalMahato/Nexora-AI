@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from db.repos.run_steps_repo import log_step
 
 from api.schemas.runs import RunCreateRequest, RunCreateResponse, GetRunResponse, RunResponse
-from app.domain.run_status import RunStatus
+from db.models.run import RunStatus
+
 from db.deps import get_db
 from db.repos.runs_repo import create_run, get_run
 from db.repos.tool_calls_repo import log_tool_call

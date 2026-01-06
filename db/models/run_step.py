@@ -41,6 +41,6 @@ class RunStep(Base):
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-# # Helpful composite indexes for timeline queries
-# Index("idx_run_steps_run_id_started_at", RunStep.run_id, RunStep.started_at)
-# Index("idx_run_steps_run_id_step_name", RunStep.run_id, RunStep.step_name)
+    # # Helpful composite indexes for timeline queries
+    # Index("idx_run_steps_run_id_started_at", RunStep.run_id, RunStep.started_at)
+    # Index("idx_run_steps_run_id_step_name", RunStep.run_id, RunStep.step_name)

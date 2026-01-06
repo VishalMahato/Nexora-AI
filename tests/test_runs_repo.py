@@ -5,7 +5,8 @@ from sqlalchemy import text
 
 from db.session import SessionLocal  # using your existing session factory
 from db.repos.runs_repo import create_run, get_run, update_run_status
-from app.domain.run_status import RunStatus
+from db.models.run import RunStatus
+
 
 
 @pytest.fixture()

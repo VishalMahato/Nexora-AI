@@ -30,7 +30,7 @@ class ToolCall(Base):
         nullable=False,
     )
 
-    step_id: Mapped[uuid.UUID | None] = mapped_column(
+    step_id: Mapped[uuid.UUID | None] = mapped_column(      
         UUID(as_uuid=True),
         ForeignKey("run_steps.id", ondelete="SET NULL"),
         nullable=True,

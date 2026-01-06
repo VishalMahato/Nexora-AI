@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from db.models.run import Run
-from app.domain.run_status import RunStatus, assert_valid_transition
+from app.domain.run_status import  assert_valid_transition
+from db.models.run import RunStatus
+
 
 
 class RunNotFoundError(Exception):
