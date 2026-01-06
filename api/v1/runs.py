@@ -1,18 +1,25 @@
 from __future__ import annotations
 
 from uuid import UUID
-
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db.repos.run_steps_repo import log_step
 
-from api.schemas.runs import RunCreateRequest, RunCreateResponse, GetRunResponse, RunResponse
-from db.models.run import RunStatus
+# from db.models.run import RunStatus
 
 from db.deps import get_db
 from db.repos.runs_repo import create_run, get_run
 from db.repos.tool_calls_repo import log_tool_call
+from db.repos.tool_calls_repo import list_tool_calls_for_run
 
+from api.schemas.runs import (
+    RunCreateRequest,
+    RunCreateResponse,
+    GetRunResponse,
+    RunResponse,
+    ToolCallRead,
+)
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -81,3 +88,27 @@ def get_run_endpoint(run_id: UUID, db: Session = Depends(get_db)) -> GetRunRespo
             updated_at=run.updated_at,
         )
     )
+
+@router.get(
+    "/{run_id}/tool-calls",
+    response_model=list[ToolCallRead],
+)
+def list_run_tool_calls(
+    run_id: UUID,
+    db: Session = Depends(get_db),
+):
+    run = get_run(db, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    return list_tool_calls_for_run(db, run_id=run_id)
+
+@router.get("/{run_id}/tools", response_model=list[ToolCallRead])
+def list_run_tools_alias(
+    run_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return list_run_tool_calls(
+    run_id: UUID,
+    db: Session = Depends(get_db),
+):
