@@ -4,6 +4,24 @@ from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field
 
+from __future__ import annotations
+from typing import Any
+
+
+class ToolCallRead(BaseModel):
+    id: UUID
+    run_id: UUID
+    step_id: UUID | None
+    tool_name: str
+    request: dict[str, Any] | None
+    response: dict[str, Any] | None
+    error: str | None
+    started_at: datetime
+    ended_at: datetime | None
+
+    class Config:
+        from_attributes = True
+
 
 class RunCreateRequest(BaseModel):
     intent: str = Field(..., min_length=1, max_length=5000)
