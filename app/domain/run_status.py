@@ -1,17 +1,6 @@
 from __future__ import annotations
-from enum import Enum
 
-
-class RunStatus(str, Enum):
-    CREATED = "CREATED"
-    RUNNING = "RUNNING"
-    AWAITING_APPROVAL = "AWAITING_APPROVAL"
-    APPROVED_READY = "APPROVED_READY"
-
-    FAILED = "FAILED"
-    REJECTED = "REJECTED"
-    BLOCKED = "BLOCKED"
-
+from db.models.run import RunStatus
 
 TERMINAL = {
     RunStatus.APPROVED_READY,
@@ -33,8 +22,7 @@ ALLOWED = {
 
 def assert_valid_transition(frm: RunStatus, to: RunStatus) -> None:
     if frm in TERMINAL:
-        raise ValueError(f"Cannot transition from terminal status: {frm}")
+        raise ValueError(f"Cannot transition from terminal status: {frm.value}")
 
     if to not in ALLOWED.get(frm, set()):
-        raise ValueError(f"Invalid status transition: {frm} -> {to}")
-    
+        raise ValueError(f"Invalid status transition: {frm.value} -> {to.value}")

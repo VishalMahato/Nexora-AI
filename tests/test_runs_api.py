@@ -7,7 +7,8 @@ from fastapi.testclient import TestClient
 from app.main import create_app
 from db.session import SessionLocal
 from db.models.run import Run
-from app.domain.run_status import RunStatus
+from db.models.run import RunStatus
+
 from db.repos.run_steps_repo import list_steps_for_run
 from db.session import SessionLocal
 from db.session import SessionLocal
