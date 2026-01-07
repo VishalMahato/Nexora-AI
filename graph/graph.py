@@ -12,9 +12,9 @@ from graph.nodes import (
     wallet_snapshot,
     build_txs,
     simulate_txs,
+    policy_eval,      
     finalize,
 )
-
 
 def build_graph() -> StateGraph:
     """
@@ -23,6 +23,7 @@ def build_graph() -> StateGraph:
     graph = StateGraph(RunState)
 
     graph.add_node("INPUT_NORMALIZE", input_normalize)
+    graph.add_node("POLICY_EVAL", policy_eval)
     graph.add_node("WALLET_SNAPSHOT", wallet_snapshot)
     graph.add_node("BUILD_TXS", build_txs)
     graph.add_node("SIMULATE_TXS", simulate_txs)
@@ -33,7 +34,8 @@ def build_graph() -> StateGraph:
     graph.add_edge("INPUT_NORMALIZE", "WALLET_SNAPSHOT")
     graph.add_edge("WALLET_SNAPSHOT", "BUILD_TXS")
     graph.add_edge("BUILD_TXS", "SIMULATE_TXS")
-    graph.add_edge("SIMULATE_TXS", "FINALIZE")
+    graph.add_edge("SIMULATE_TXS", "POLICY_EVAL")
+    graph.add_edge("POLICY_EVAL", "FINALIZE")
     graph.add_edge("FINALIZE", END)
 
     return graph
