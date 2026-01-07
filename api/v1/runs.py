@@ -108,7 +108,4 @@ def list_run_tools_alias(
     run_id: UUID,
     db: Session = Depends(get_db),
 ):
-    return list_run_tool_calls(
-    run_id: UUID,
-    db: Session = Depends(get_db),
-):
+    return list_run_tool_calls(run_id=run_id, db=db)
