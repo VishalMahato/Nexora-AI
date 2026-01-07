@@ -36,7 +36,7 @@ def _cleanup_run(run_id: uuid.UUID) -> None:
 def test_post_v1_runs_creates_run(client):
     payload = {
         "intent": "Swap 50 USDC to ETH",
-        "walletAddress": "0xabc123",
+        "walletAddress": "0x1111111111111111111111111111111111111111",
         "chainId": 1,
     }
 
@@ -55,7 +55,7 @@ def test_get_v1_runs_returns_run(client):
     # First create a run
     create_payload = {
         "intent": "Check balances",
-        "walletAddress": "0xabc123",
+        "walletAddress": "0x1111111111111111111111111111111111111111",
         "chainId": 1,
     }
 
@@ -88,7 +88,7 @@ def test_get_v1_runs_unknown_id_404(client):
 def test_post_v1_runs_creates_initial_step(client):
     payload = {
         "intent": "Swap 50 USDC to ETH",
-        "walletAddress": "0xabc123",
+        "walletAddress": "0x1111111111111111111111111111111111111111",
         "chainId": 1,
     }
 
@@ -108,7 +108,7 @@ def test_post_v1_runs_creates_initial_step(client):
 def test_post_v1_runs_creates_tool_call(client):
     payload = {
         "intent": "Swap 50 USDC to ETH",
-        "walletAddress": "0xabc123",
+        "walletAddress": "0x1111111111111111111111111111111111111111",
         "chainId": 1,
     }
 

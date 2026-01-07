@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     database_url: str = ""
     web3_service_url: str = ""
     llm_model: str = "gpt-4o-mini"  # safe default- override via env
+    rpc_urls: str = "" 
     # --- observability ---
     log_level: str = "INFO"
     log_json: bool = False
@@ -35,6 +36,10 @@ class Settings(BaseSettings):
     @property
     def LLM_MODEL(self) -> str:
         return self.llm_model
+    @property
+    def RPC_URLS(self) -> str:
+        return self.rpc_urls
+
 
 
 @lru_cache
