@@ -24,9 +24,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/runs", tags=["runs"])
 
 @router.post("/{run_id}/start")
-
-
-@router.post("/{run_id}/start")
 def start_run(run_id: UUID, db: Session = Depends(get_db)):
     """
     Minimal synchronous execution:
@@ -66,8 +63,11 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
         state = RunState(
             run_id=run.id,
             intent=run.intent,
-            status=RunStatus.RUNNING.value,  # RunState.status is str
+            status=RunStatus.RUNNING,
+            chain_id=run.chain_id,
+            wallet_address=run.wallet_address,
         )
+
 
         final_state = run_graph(db, state)
 
