@@ -100,7 +100,7 @@ def wallet_snapshot(state: RunState, config: RunnableConfig) -> RunState:
         return state
 
     except Exception as e:
-     
+
         log_step(
             db,
             run_id=state.run_id,
@@ -110,3 +110,123 @@ def wallet_snapshot(state: RunState, config: RunnableConfig) -> RunState:
             agent="GRAPH",
         )
         raise
+    
+
+
+
+def build_txs(state: RunState, config: RunnableConfig) -> RunState:
+    """
+    Deterministic tx planning (MVP):
+    - For now: always NOOP plan (safe)
+    - Later: parse intent to approve/swap templates
+    """
+    db: Session = config["configurable"]["db"]
+
+    log_step(
+        db,
+        run_id=state.run_id,
+        step_name="BUILD_TXS",
+        status="STARTED",
+        input={
+            "normalized_intent": state.artifacts.get("normalized_intent"),
+            "has_wallet_snapshot": "wallet_snapshot" in state.artifacts,
+        },
+        agent="GRAPH",
+    )
+
+    normalized_intent = (state.artifacts.get("normalized_intent") or "").lower().strip()
+
+    # MVP-safe behavior: NOOP
+    tx_plan = {
+        "type": "noop",
+        "reason": "tx planning not implemented yet (F11 Part 2).",
+        "normalized_intent": normalized_intent,
+        "candidates": [],
+    }
+
+    state.artifacts["tx_plan"] = tx_plan
+
+    log_step(
+        db,
+        run_id=state.run_id,
+        step_name="BUILD_TXS",
+        status="DONE",
+        output=tx_plan,
+        agent="GRAPH",
+    )
+
+    return state
+
+
+def simulate_txs(state: RunState, config: RunnableConfig) -> RunState:
+    """
+    Simulate planned transactions.
+    MVP behavior:
+    - If tx_plan is noop or has no candidates → skip
+    - Otherwise simulate each tx (future)
+    """
+    db: Session = config["configurable"]["db"]
+
+    tx_plan = state.artifacts.get("tx_plan") or {}
+
+    log_step(
+        db,
+        run_id=state.run_id,
+        step_name="SIMULATE_TXS",
+        status="STARTED",
+        input={
+            "tx_plan_type": tx_plan.get("type"),
+            "num_candidates": len(tx_plan.get("candidates", [])),
+        },
+        agent="GRAPH",
+    )
+
+    # MVP-safe: nothing to simulate
+    if tx_plan.get("type") == "noop" or not tx_plan.get("candidates"):
+        simulation_result = {
+            "status": "skipped",
+            "reason": "no transactions to simulate",
+        }
+
+        state.artifacts["simulation"] = simulation_result
+
+        log_step(
+            db,
+            run_id=state.run_id,
+            step_name="SIMULATE_TXS",
+            status="DONE",
+            output=simulation_result,
+            agent="GRAPH",
+        )
+        return state
+
+    # ---- future path (not active yet) ----
+    client = ChainClient()
+    results = []
+
+    for tx in tx_plan["candidates"]:
+        # Placeholder for future simulation
+        results.append(
+            {
+                "tx": tx,
+                "status": "not_implemented",
+            }
+        )
+
+    simulation_result = {
+        "status": "completed",
+        "results": results,
+    }
+
+    state.artifacts["simulation"] = simulation_result
+
+    log_step(
+        db,
+        run_id=state.run_id,
+        step_name="SIMULATE_TXS",
+        status="DONE",
+        output=simulation_result,
+        agent="GRAPH",
+    )
+
+    return state

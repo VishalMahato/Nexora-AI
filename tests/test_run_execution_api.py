@@ -19,7 +19,7 @@ def test_start_run_transitions_and_logs_steps(client):
         "chainId": 1,
     }
     r = client.post("/v1/runs", json=payload)
-    assert r.status_code == 200
+    assert r.status_code == 200 
     run_id = r.json()["runId"]
 
     fake_snapshot = {
@@ -39,6 +39,10 @@ def test_start_run_transitions_and_logs_steps(client):
         assert body["status"] == RunStatus.AWAITING_APPROVAL.value
         assert body["artifacts"]["normalized_intent"] == "Start Run Test"
         assert body["artifacts"]["wallet_snapshot"]["native"]["balanceWei"] == "123"
+        assert body["artifacts"]["tx_plan"]["type"] == "noop"
+        assert body["artifacts"]["simulation"]["status"] == "skipped"
+
+
 
     # 3) Ensure steps are logged
     db = SessionLocal()
@@ -46,6 +50,8 @@ def test_start_run_transitions_and_logs_steps(client):
         steps = list_steps_for_run(db, run_id=run_id)
         step_names = [x.step_name for x in steps]
 
+        assert "BUILD_TXS" in step_names
+        assert "SIMULATE_TXS" in step_names
         assert "INPUT_NORMALIZE" in step_names
         assert "WALLET_SNAPSHOT" in step_names
         assert "FINALIZE" in step_names

@@ -7,7 +7,15 @@ from langgraph.graph import StateGraph, END
 from sqlalchemy.orm import Session
 
 from graph.state import RunState
-from graph.nodes import input_normalize, wallet_snapshot, finalize
+from graph.nodes import (
+    input_normalize,
+    wallet_snapshot,
+    build_txs,
+    simulate_txs,
+    finalize,
+)
+
+
 
 
 
@@ -21,13 +29,18 @@ def build_graph() -> StateGraph:
 
     graph.add_node("INPUT_NORMALIZE", input_normalize)
     graph.add_node("WALLET_SNAPSHOT", wallet_snapshot)
+    graph.add_node("BUILD_TXS", build_txs)
+    graph.add_node("SIMULATE_TXS", simulate_txs)
+    
     graph.add_node("FINALIZE", finalize)
 
 
     graph.set_entry_point("INPUT_NORMALIZE")
 
     graph.add_edge("INPUT_NORMALIZE", "WALLET_SNAPSHOT")
-    graph.add_edge("WALLET_SNAPSHOT", "FINALIZE")
+    graph.add_edge("WALLET_SNAPSHOT", "BUILD_TXS")
+    graph.add_edge("BUILD_TXS", "SIMULATE_TXS")
+    graph.add_edge("SIMULATE_TXS", "FINALIZE")
 
     graph.add_edge("FINALIZE", END)
 
