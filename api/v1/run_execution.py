@@ -20,8 +20,8 @@ from graph.state import RunState
 
 logger = logging.getLogger(__name__)
 
-
 router = APIRouter(prefix="/runs", tags=["runs"])
+
 
 @router.post("/{run_id}/start")
 def start_run(run_id: UUID, db: Session = Depends(get_db)):
@@ -29,6 +29,9 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
     Minimal synchronous execution:
     CREATED -> RUNNING -> AWAITING_APPROVAL (on success)
     CREATED -> RUNNING -> FAILED (on exception)
+
+    With policy engine (F12):
+    CREATED -> RUNNING -> BLOCKED (if decision.action == BLOCK)
 
     Note:
     run_id context is handled by middleware (no manual set_run_id here).
@@ -68,16 +71,7 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
             wallet_address=run.wallet_address,
         )
 
-
         final_state = run_graph(db, state)
-
-        # FSM-correct success transition from RUNNING
-        update_run_status(
-            db,
-            run_id=run_id,
-            to_status=RunStatus.AWAITING_APPROVAL,
-            expected_from=RunStatus.RUNNING,
-        )
 
         artifacts = (
             final_state.artifacts
@@ -85,10 +79,26 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
             else final_state.get("artifacts", {})
         )
 
+        # decide final status from policy decision 
+        decision = artifacts.get("decision") or {}
+        action = decision.get("action")
+
+        if action == "BLOCK":
+            final_status = RunStatus.BLOCKED
+        else:
+            final_status = RunStatus.AWAITING_APPROVAL
+
+        update_run_status(
+            db,
+            run_id=run_id,
+            to_status=final_status,
+            expected_from=RunStatus.RUNNING,
+        )
+
         return {
             "ok": True,
             "runId": str(run.id),
-            "status": RunStatus.AWAITING_APPROVAL.value,
+            "status": final_status.value,
             "artifacts": artifacts,
         }
 

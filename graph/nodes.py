@@ -6,7 +6,9 @@ from langchain_core.runnables import RunnableConfig
 from graph.state import RunState
 from db.repos.run_steps_repo import log_step
 from chain.client import ChainClient
+import policy.engine as policy_engine
 
+from app.config import get_settings
 
 def input_normalize(state: RunState, config: RunnableConfig) -> RunState:
     db: Session = config["configurable"]["db"]
@@ -180,4 +182,45 @@ def finalize(state: RunState, config: RunnableConfig) -> RunState:
         output={"artifacts": list(state.artifacts.keys())},
         agent="LangGraph",
     )
+    return state
+
+
+
+
+def policy_eval(state: RunState, config: RunnableConfig) -> RunState:
+    db: Session = config["configurable"]["db"]
+
+    # Step START
+    step = log_step(
+        db,
+        run_id=state.run_id,
+        step_name="POLICY_EVAL",
+        status="STARTED",
+        input={"artifacts_keys": sorted(list(state.artifacts.keys()))},
+        agent="LangGraph",
+    )
+
+    settings = get_settings()
+    policy_result, decision = policy_engine.evaluate_policies(
+        state.artifacts,
+        allowlisted_to=settings.allowlisted_to_set(),
+    )
+
+
+    state.artifacts["policy_result"] = policy_result.model_dump()
+    state.artifacts["decision"] = decision.model_dump()
+
+    # Step DONE
+    log_step(
+        db,
+        run_id=state.run_id,
+        step_name="POLICY_EVAL",
+        status="DONE",
+        output={
+            "policy_result": state.artifacts["policy_result"],
+            "decision": state.artifacts["decision"],
+        },
+        agent="LangGraph",
+    )
+
     return state

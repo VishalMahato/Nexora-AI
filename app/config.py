@@ -1,4 +1,7 @@
 from functools import lru_cache
+import json
+from typing import Set
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,6 +11,7 @@ class Settings(BaseSettings):
     web3_service_url: str = ""
     llm_model: str = "gpt-4o-mini"  # safe default- override via env
     rpc_urls: str = "" 
+    allowlist_to: str = Field(default="[]", alias="ALLOWLIST_TO")
     # --- observability ---
     log_level: str = "INFO"
     log_json: bool = False
@@ -23,6 +27,16 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",   # ✅ ignore APP_ENV, LOG_LEVEL, etc
     )
+    def allowlisted_to_set(self) -> Set[str]:
+        try:
+            data = json.loads(self.allowlist_to or "[]")
+            if not isinstance(data, list):
+                return set()
+            return {str(x).lower() for x in data}
+        except Exception:
+            # If env is invalid, fail closed? For MVP I recommend "safe default": empty set.
+            # (Empty allowlist will only matter once you have non-noop txs.)
+            return set()
 
 
     @property
