@@ -9,12 +9,8 @@ from chain.client import ChainClient
 
 
 def input_normalize(state: RunState, config: RunnableConfig) -> RunState:
-    """
-    Normalize user intent.
-    """
-    db: Session = config["configurable"]["db"]   # 👈 pulled from config
+    db: Session = config["configurable"]["db"]
 
-    # ---- STEP START ----
     log_step(
         db,
         run_id=state.run_id,
@@ -25,10 +21,8 @@ def input_normalize(state: RunState, config: RunnableConfig) -> RunState:
     )
 
     normalized_intent = state.intent.strip()
-
     state.artifacts["normalized_intent"] = normalized_intent
 
-    # ---- STEP DONE ----
     log_step(
         db,
         run_id=state.run_id,
@@ -37,24 +31,6 @@ def input_normalize(state: RunState, config: RunnableConfig) -> RunState:
         output={"normalized_intent": normalized_intent},
         agent="LangGraph",
     )
-
-    return state
-
-
-def finalize(state: RunState, config: RunnableConfig) -> RunState:
-    """
-    Final no-op node.
-    """
-    db: Session = config["configurable"]["db"]  
-    log_step(
-        db,
-        run_id=state.run_id,
-        step_name="FINALIZE",
-        status="DONE",
-        output={"artifacts": list(state.artifacts.keys())},
-        agent="LangGraph",
-    )
-
     return state
 
 
@@ -62,16 +38,12 @@ def wallet_snapshot(state: RunState, config: RunnableConfig) -> RunState:
     db: Session = config["configurable"]["db"]
     client = ChainClient()
 
-    # Step start
     log_step(
         db,
         run_id=state.run_id,
         step_name="WALLET_SNAPSHOT",
         status="STARTED",
-        input={
-            "chainId": state.chain_id,
-            "walletAddress": state.wallet_address,
-        },
+        input={"chainId": state.chain_id, "walletAddress": state.wallet_address},
         agent="GRAPH",
     )
 
@@ -79,7 +51,7 @@ def wallet_snapshot(state: RunState, config: RunnableConfig) -> RunState:
         snapshot = client.wallet_snapshot(
             db=db,
             run_id=state.run_id,
-            step_id=None,  # ✅ if your log_step does NOT return step.id reliably
+            step_id=None,
             chain_id=state.chain_id or 0,
             wallet_address=state.wallet_address or "",
             erc20_tokens=[],
@@ -88,7 +60,6 @@ def wallet_snapshot(state: RunState, config: RunnableConfig) -> RunState:
 
         state.artifacts["wallet_snapshot"] = snapshot
 
-        # Step done
         log_step(
             db,
             run_id=state.run_id,
@@ -100,7 +71,6 @@ def wallet_snapshot(state: RunState, config: RunnableConfig) -> RunState:
         return state
 
     except Exception as e:
-
         log_step(
             db,
             run_id=state.run_id,
@@ -110,16 +80,9 @@ def wallet_snapshot(state: RunState, config: RunnableConfig) -> RunState:
             agent="GRAPH",
         )
         raise
-    
-
 
 
 def build_txs(state: RunState, config: RunnableConfig) -> RunState:
-    """
-    Deterministic tx planning (MVP):
-    - For now: always NOOP plan (safe)
-    - Later: parse intent to approve/swap templates
-    """
     db: Session = config["configurable"]["db"]
 
     log_step(
@@ -136,7 +99,6 @@ def build_txs(state: RunState, config: RunnableConfig) -> RunState:
 
     normalized_intent = (state.artifacts.get("normalized_intent") or "").lower().strip()
 
-    # MVP-safe behavior: NOOP
     tx_plan = {
         "type": "noop",
         "reason": "tx planning not implemented yet (F11 Part 2).",
@@ -154,19 +116,11 @@ def build_txs(state: RunState, config: RunnableConfig) -> RunState:
         output=tx_plan,
         agent="GRAPH",
     )
-
     return state
 
 
 def simulate_txs(state: RunState, config: RunnableConfig) -> RunState:
-    """
-    Simulate planned transactions.
-    MVP behavior:
-    - If tx_plan is noop or has no candidates → skip
-    - Otherwise simulate each tx (future)
-    """
     db: Session = config["configurable"]["db"]
-
     tx_plan = state.artifacts.get("tx_plan") or {}
 
     log_step(
@@ -181,13 +135,8 @@ def simulate_txs(state: RunState, config: RunnableConfig) -> RunState:
         agent="GRAPH",
     )
 
-    # MVP-safe: nothing to simulate
     if tx_plan.get("type") == "noop" or not tx_plan.get("candidates"):
-        simulation_result = {
-            "status": "skipped",
-            "reason": "no transactions to simulate",
-        }
-
+        simulation_result = {"status": "skipped", "reason": "no transactions to simulate"}
         state.artifacts["simulation"] = simulation_result
 
         log_step(
@@ -200,24 +149,13 @@ def simulate_txs(state: RunState, config: RunnableConfig) -> RunState:
         )
         return state
 
-    # ---- future path (not active yet) ----
+    # future implementation
     client = ChainClient()
     results = []
-
     for tx in tx_plan["candidates"]:
-        # Placeholder for future simulation
-        results.append(
-            {
-                "tx": tx,
-                "status": "not_implemented",
-            }
-        )
+        results.append({"tx": tx, "status": "not_implemented"})
 
-    simulation_result = {
-        "status": "completed",
-        "results": results,
-    }
-
+    simulation_result = {"status": "completed", "results": results}
     state.artifacts["simulation"] = simulation_result
 
     log_step(
@@ -228,5 +166,18 @@ def simulate_txs(state: RunState, config: RunnableConfig) -> RunState:
         output=simulation_result,
         agent="GRAPH",
     )
+    return state
 
+
+def finalize(state: RunState, config: RunnableConfig) -> RunState:
+    db: Session = config["configurable"]["db"]
+
+    log_step(
+        db,
+        run_id=state.run_id,
+        step_name="FINALIZE",
+        status="DONE",
+        output={"artifacts": list(state.artifacts.keys())},
+        agent="LangGraph",
+    )
     return state
