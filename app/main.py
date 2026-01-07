@@ -8,6 +8,8 @@ from app.config import get_settings
 from db.session import engine
 from api.v1.runs import router as runs_router
 from api.v1.run_execution import router as run_execution_router
+from api.v1.run_approval import router as run_approval_router
+
 
 
 def create_app() -> FastAPI:
@@ -35,6 +37,8 @@ def create_app() -> FastAPI:
     v1_router = APIRouter(prefix="/v1")
     v1_router.include_router(runs_router)
     v1_router.include_router(run_execution_router)
+    v1_router.include_router(run_approval_router) 
+
     app.include_router(v1_router)
 
     return app
