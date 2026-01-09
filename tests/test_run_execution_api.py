@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from web3 import Web3
+
+from app.config import get_settings
 from db.session import SessionLocal
 from db.repos.runs_repo import get_run
 from db.repos.run_steps_repo import list_steps_for_run
@@ -165,3 +168,111 @@ def test_start_run_plan_validation_failure_returns_500(client, monkeypatch):
     with patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot):
         s = client.post(f"/v1/runs/{run_id}/start")
         assert s.status_code == 500, s.text
+
+
+def test_start_run_native_transfer_plan_creates_candidate(client, monkeypatch):
+    recipient = "0x2222222222222222222222222222222222222222"
+    monkeypatch.setenv("ALLOWLIST_TO", f'[\"{recipient}\"]')
+    get_settings.cache_clear()
+
+    payload = {
+        "intent": f"send 0.0001 eth to {recipient}",
+        "walletAddress": VALID_WALLET,
+        "chainId": 1,
+    }
+    r = client.post("/v1/runs", json=payload)
+    assert r.status_code == 200
+    run_id = r.json()["runId"]
+
+    fake_snapshot = {
+        "chainId": 1,
+        "walletAddress": VALID_WALLET,
+        "native": {"balanceWei": "123"},
+        "erc20": [],
+        "allowances": [],
+    }
+
+    with patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot):
+        s = client.post(f"/v1/runs/{run_id}/start")
+        assert s.status_code == 200, s.text
+
+        body = s.json()
+        assert body["status"] == RunStatus.AWAITING_APPROVAL.value
+
+        artifacts = body["artifacts"]
+        assert artifacts["tx_plan"]["type"] == "plan"
+        assert len(artifacts["tx_plan"]["candidates"]) == 1
+        candidate = artifacts["tx_plan"]["candidates"][0]
+        assert candidate["to"] == Web3.to_checksum_address(recipient)
+        assert candidate["valueWei"] != "0"
+        assert artifacts["decision"]["action"] == "NEEDS_APPROVAL"
+
+    db = SessionLocal()
+    try:
+        run = get_run(db, run_id)
+        assert run is not None
+        persisted = run.artifacts.get("tx_plan", {})
+        assert persisted["candidates"][0]["to"] == Web3.to_checksum_address(recipient)
+    finally:
+        db.close()
+
+
+def test_start_run_native_transfer_accepts_extra_whitespace(client, monkeypatch):
+    recipient = "0x3333333333333333333333333333333333333333"
+    monkeypatch.setenv("ALLOWLIST_TO", f'[\"{recipient}\"]')
+    get_settings.cache_clear()
+
+    payload = {
+        "intent": f"  send   0.0001   eth   to   {recipient}  ",
+        "walletAddress": VALID_WALLET,
+        "chainId": 1,
+    }
+    r = client.post("/v1/runs", json=payload)
+    assert r.status_code == 200
+    run_id = r.json()["runId"]
+
+    fake_snapshot = {
+        "chainId": 1,
+        "walletAddress": VALID_WALLET,
+        "native": {"balanceWei": "123"},
+        "erc20": [],
+        "allowances": [],
+    }
+
+    with patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot):
+        s = client.post(f"/v1/runs/{run_id}/start")
+        assert s.status_code == 200, s.text
+
+        artifacts = s.json()["artifacts"]
+        assert artifacts["tx_plan"]["type"] == "plan"
+        assert artifacts["tx_plan"]["candidates"][0]["to"] == Web3.to_checksum_address(recipient)
+
+
+def test_start_run_native_transfer_rejects_scientific_notation(client, monkeypatch):
+    recipient = "0x4444444444444444444444444444444444444444"
+    monkeypatch.setenv("ALLOWLIST_TO", f'[\"{recipient}\"]')
+    get_settings.cache_clear()
+
+    payload = {
+        "intent": f"send 1e-4 eth to {recipient}",
+        "walletAddress": VALID_WALLET,
+        "chainId": 1,
+    }
+    r = client.post("/v1/runs", json=payload)
+    assert r.status_code == 200
+    run_id = r.json()["runId"]
+
+    fake_snapshot = {
+        "chainId": 1,
+        "walletAddress": VALID_WALLET,
+        "native": {"balanceWei": "123"},
+        "erc20": [],
+        "allowances": [],
+    }
+
+    with patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot):
+        s = client.post(f"/v1/runs/{run_id}/start")
+        assert s.status_code == 200, s.text
+
+        artifacts = s.json()["artifacts"]
+        assert artifacts["tx_plan"]["type"] == "noop"
