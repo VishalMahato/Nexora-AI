@@ -141,3 +141,32 @@ def estimate_gas(chain_id: int, tx: dict[str, Any]) -> int:
         raise Web3RPCError(f"estimate_gas reverted: {e}") from e
     except Exception as e:
         raise Web3RPCError(f"estimate_gas failed: {e}") from e
+
+
+def get_fee_quote(chain_id: int) -> dict[str, Any]:
+    """
+    Return either legacy gasPrice or EIP-1559 fee fields.
+    """
+    w3 = _get_web3(chain_id)
+    try:
+        block = w3.eth.get_block("latest")
+        base_fee = block.get("baseFeePerGas")
+        if base_fee is not None:
+            try:
+                max_priority = w3.eth.max_priority_fee
+            except Exception:
+                max_priority = None
+
+            if max_priority is None:
+                gas_price = w3.eth.gas_price
+                max_priority = max(gas_price - base_fee, 0)
+
+            max_fee = base_fee + (max_priority * 2)
+            return {
+                "maxFeePerGas": int(max_fee),
+                "maxPriorityFeePerGas": int(max_priority),
+            }
+
+        return {"gasPrice": int(w3.eth.gas_price)}
+    except Exception as e:
+        raise Web3RPCError(f"get_fee_quote failed: {e}") from e

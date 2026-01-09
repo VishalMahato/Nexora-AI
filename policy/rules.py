@@ -84,6 +84,36 @@ def rule_simulation_success(
             reason="Simulation was skipped for a non-noop plan.",
         )
 
+    if simulation.get("status") == "completed":
+        results = simulation.get("results")
+        if isinstance(results, list):
+            failures = [r for r in results if r.get("success") is False]
+            if failures:
+                errors = [r.get("error") for r in failures if r.get("error")]
+                return PolicyCheckResult(
+                    id="simulation_success",
+                    title="Simulation: must succeed",
+                    status=CheckStatus.FAIL,
+                    reason="Simulation failed/reverted.",
+                    metadata={
+                        "num_failed": len(failures),
+                        "errors": errors[:3],
+                    },
+                )
+            if results:
+                return PolicyCheckResult(
+                    id="simulation_success",
+                    title="Simulation: must succeed",
+                    status=CheckStatus.PASS,
+                    reason="Simulation succeeded for all candidates.",
+                )
+            return PolicyCheckResult(
+                id="simulation_success",
+                title="Simulation: must succeed",
+                status=CheckStatus.WARN,
+                reason="Simulation completed without results.",
+            )
+
     if "success" in simulation:
         if simulation.get("success") is True:
             return PolicyCheckResult(
