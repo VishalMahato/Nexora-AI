@@ -33,7 +33,12 @@ def test_start_run_transitions_and_logs_steps(client):
         "allowances": [],
     }
 
-    with patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot):
+    with (
+        patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot),
+        patch("chain.client.ChainClient.eth_call", return_value=b""),
+        patch("chain.client.ChainClient.estimate_gas", return_value=21000),
+        patch("chain.client.ChainClient.get_fee_quote", return_value={"gasPrice": "100"}),
+    ):
         s = client.post(f"/v1/runs/{run_id}/start")
         assert s.status_code == 200, s.text
 
@@ -133,7 +138,12 @@ def test_start_run_blocked_by_policy(client, monkeypatch):
 
     monkeypatch.setattr("policy.engine.evaluate_policies", fake_eval)
 
-    with patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot):
+    with (
+        patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot),
+        patch("chain.client.ChainClient.eth_call", return_value=b""),
+        patch("chain.client.ChainClient.estimate_gas", return_value=21000),
+        patch("chain.client.ChainClient.get_fee_quote", return_value={"gasPrice": "100"}),
+    ):
         s = client.post(f"/v1/runs/{run_id}/start")
         assert s.status_code == 200, s.text
         body = s.json()
@@ -163,7 +173,13 @@ def test_start_run_plan_validation_failure_returns_500(client, monkeypatch):
     def bad_plan(_planner_input):
         return {"type": "plan", "actions": []}
 
-    monkeypatch.setattr("graph.nodes._plan_tx_stub", bad_plan)
+    import importlib
+
+    plan_tx_module = importlib.import_module("graph.nodes.plan_tx")
+    if hasattr(plan_tx_module, "_plan_tx_stub"):
+        monkeypatch.setattr(plan_tx_module, "_plan_tx_stub", bad_plan)
+    else:
+        monkeypatch.setattr("graph.nodes._plan_tx_stub", bad_plan)
 
     with patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot):
         s = client.post(f"/v1/runs/{run_id}/start")
@@ -192,7 +208,12 @@ def test_start_run_native_transfer_plan_creates_candidate(client, monkeypatch):
         "allowances": [],
     }
 
-    with patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot):
+    with (
+        patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot),
+        patch("chain.client.ChainClient.eth_call", return_value="0x"),
+        patch("chain.client.ChainClient.estimate_gas", return_value=21000),
+        patch("chain.client.ChainClient.get_fee_quote", return_value={"gasPrice": "100"}),
+    ):
         s = client.post(f"/v1/runs/{run_id}/start")
         assert s.status_code == 200, s.text
 
@@ -239,7 +260,12 @@ def test_start_run_native_transfer_accepts_extra_whitespace(client, monkeypatch)
         "allowances": [],
     }
 
-    with patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot):
+    with (
+        patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot),
+        patch("chain.client.ChainClient.eth_call", return_value="0x"),
+        patch("chain.client.ChainClient.estimate_gas", return_value=21000),
+        patch("chain.client.ChainClient.get_fee_quote", return_value={"gasPrice": "100"}),
+    ):
         s = client.post(f"/v1/runs/{run_id}/start")
         assert s.status_code == 200, s.text
 

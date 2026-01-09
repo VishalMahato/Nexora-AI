@@ -187,6 +187,75 @@ class ChainClient:
     # Simulation
     # ---------------------------
 
+    def _normalize_tx_dict(self, tx: dict[str, Any]) -> dict[str, Any]:
+        tx_norm: dict[str, Any] = dict(tx)
+        if "from" in tx_norm and isinstance(tx_norm["from"], str):
+            tx_norm["from"] = Web3.to_checksum_address(tx_norm["from"])
+        if "to" in tx_norm and isinstance(tx_norm["to"], str):
+            tx_norm["to"] = Web3.to_checksum_address(tx_norm["to"])
+        if "value" in tx_norm and isinstance(tx_norm["value"], str):
+            tx_norm["value"] = int(tx_norm["value"])
+        return tx_norm
+
+    def eth_call(
+        self,
+        *,
+        db: Session,
+        run_id,
+        step_id,
+        chain_id: int,
+        tx: dict[str, Any],
+    ) -> str:
+        tx_norm = self._normalize_tx_dict(tx)
+        result = run_tool(
+            db,
+            run_id=run_id,
+            step_id=step_id,
+            tool_name="rpc.eth_call",
+            request={"chainId": chain_id, "tx": tx},
+            fn=lambda: rpc.eth_call(chain_id, tx_norm),
+        )
+        if isinstance(result, (bytes, bytearray)):
+            return "0x" + result.hex()
+        return str(result)
+
+    def estimate_gas(
+        self,
+        *,
+        db: Session,
+        run_id,
+        step_id,
+        chain_id: int,
+        tx: dict[str, Any],
+    ) -> int:
+        tx_norm = self._normalize_tx_dict(tx)
+        return run_tool(
+            db,
+            run_id=run_id,
+            step_id=step_id,
+            tool_name="rpc.estimate_gas",
+            request={"chainId": chain_id, "tx": tx},
+            fn=lambda: int(rpc.estimate_gas(chain_id, tx_norm)),
+        )
+
+    def get_fee_quote(
+        self,
+        *,
+        db: Session,
+        run_id,
+        step_id,
+        chain_id: int,
+    ) -> dict[str, Any]:
+        fee_quote = run_tool(
+            db,
+            run_id=run_id,
+            step_id=step_id,
+            tool_name="rpc.fee_quote",
+            request={"chainId": chain_id},
+            fn=lambda: rpc.get_fee_quote(chain_id),
+        )
+        return {k: str(v) for k, v in fee_quote.items()}
+
     def simulate_tx(
         self,
         *,
@@ -204,15 +273,7 @@ class ChainClient:
         Returns JSON-safe fields.
         """
         # Normalize checksum addresses if present
-        tx_norm: dict[str, Any] = dict(tx)
-        if "from" in tx_norm and isinstance(tx_norm["from"], str):
-            tx_norm["from"] = Web3.to_checksum_address(tx_norm["from"])
-        if "to" in tx_norm and isinstance(tx_norm["to"], str):
-            tx_norm["to"] = Web3.to_checksum_address(tx_norm["to"])
-
-        # Web3 expects ints for value, gas, etc. We accept strings too.
-        if "value" in tx_norm and isinstance(tx_norm["value"], str):
-            tx_norm["value"] = int(tx_norm["value"])
+        tx_norm = self._normalize_tx_dict(tx)
 
         call_result = run_tool(
             db,
