@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
-from langchain_core.runnables import RunnableConfig
+from typing import Any, Dict, List, Optional, Tuple
 
-from graph.state import RunState
-from db.repos.run_steps_repo import log_step
-from chain.client import ChainClient
 import policy.engine as policy_engine
+from langchain_core.runnables import RunnableConfig
+from sqlalchemy.orm import Session
+from web3 import Web3
 
 from app.config import get_settings
+from chain.client import ChainClient
+from db.repos.run_steps_repo import log_step
+from graph.schemas import TxPlan
+from graph.state import RunState
+from tools.tool_runner import run_tool
 
 def input_normalize(state: RunState, config: RunnableConfig) -> RunState:
     db: Session = config["configurable"]["db"]
@@ -101,14 +105,17 @@ def build_txs(state: RunState, config: RunnableConfig) -> RunState:
 
     normalized_intent = (state.artifacts.get("normalized_intent") or "").lower().strip()
 
-    tx_plan = {
-        "type": "noop",
-        "reason": "tx planning not implemented yet (F11 Part 2).",
-        "normalized_intent": normalized_intent,
-        "candidates": [],
-    }
-
-    state.artifacts["tx_plan"] = tx_plan
+    existing_tx_plan = state.artifacts.get("tx_plan")
+    if existing_tx_plan:
+        tx_plan = existing_tx_plan
+    else:
+        tx_plan = {
+            "type": "noop",
+            "reason": "tx planning not implemented yet (F11 Part 2).",
+            "normalized_intent": normalized_intent,
+            "candidates": [],
+        }
+        state.artifacts["tx_plan"] = tx_plan
 
     log_step(
         db,
@@ -224,3 +231,143 @@ def policy_eval(state: RunState, config: RunnableConfig) -> RunState:
     )
 
     return state
+
+def _min_wallet_prompt_view(
+    wallet_snapshot: Dict[str, Any],
+    *,
+    top_erc20: int = 8,
+    allowlisted_router_addresses: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """
+    Do NOT reinvent snapshot. Just slice/filter the existing structure
+    to keep prompt payload small.
+    """
+    allowlisted_router_addresses = allowlisted_router_addresses or []
+
+    erc20 = wallet_snapshot.get("erc20") or []
+    allowances = wallet_snapshot.get("allowances") or []
+
+    # keep top N tokens (snapshot is already only for tokens you requested)
+    erc20_view = erc20[:top_erc20] if isinstance(erc20, list) else []
+
+    # keep allowances only for allowlisted routers (if needed)
+    if allowlisted_router_addresses and isinstance(allowances, list):
+        allowset = {a.lower() for a in allowlisted_router_addresses}
+        allowances_view = [
+            row for row in allowances
+            if isinstance(row, dict) and str(row.get("spender", "")).lower() in allowset
+        ]
+    else:
+        allowances_view = allowances if isinstance(allowances, list) else []
+
+    return {
+        "chainId": wallet_snapshot.get("chainId"),
+        "walletAddress": wallet_snapshot.get("walletAddress"),
+        "native": wallet_snapshot.get("native"),
+        "erc20": erc20_view,
+        "allowances": allowances_view,
+    }
+
+
+
+
+def _plan_tx_stub(planner_input: Dict[str, Any]) -> Dict[str, Any]:
+    normalized_intent = (planner_input.get("normalized_intent") or "").strip()
+    return {
+        "plan_version": 1,
+        "type": "noop",
+        "reason": "planner not implemented yet (F14).",
+        "normalized_intent": normalized_intent,
+        "actions": [],
+    }
+
+
+def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
+    db: Session = config["configurable"]["db"]
+    settings = get_settings()
+
+    normalized_intent: str = (state.artifacts.get("normalized_intent") or "").strip()
+    wallet_snapshot: Dict[str, Any] = state.artifacts.get("wallet_snapshot") or {}
+    chain_id = getattr(state, "chain_id", None)
+
+    # config allowlists/defaults (names may vary in your settings; keep consistent with your app.config)
+    allowlisted_tokens = getattr(settings, "allowlisted_tokens", {}) or {}
+    allowlisted_routers = getattr(settings, "allowlisted_routers", {}) or {}
+    defaults = getattr(settings, "defaults", {}) or {}
+
+    # collect router addresses for filtering (optional)
+    router_addresses: List[str] = []
+    for _, rv in allowlisted_routers.items():
+        if isinstance(rv, str):
+            router_addresses.append(rv)
+        elif isinstance(rv, dict) and rv.get("address"):
+            router_addresses.append(rv["address"])
+
+    wallet_prompt_view = _min_wallet_prompt_view(
+        wallet_snapshot,
+        top_erc20=8,
+        allowlisted_router_addresses=router_addresses,
+    )
+
+    # Step 1 - RunStep logging: STARTED (small input only)
+    step = log_step(
+        db,
+        run_id=state.run_id,
+        step_name="PLAN_TX",
+        status="STARTED",
+        input={
+            "normalized_intent": normalized_intent,
+            "chain_id": chain_id,
+            "wallet": {
+                "native": wallet_prompt_view.get("native"),
+                "erc20_count": len(wallet_snapshot.get("erc20") or []),
+                "allowances_count": len(wallet_snapshot.get("allowances") or []),
+            },
+        },
+        agent="LangGraph",
+    )
+
+    # Step 2 - Gather planner inputs (single dict)
+    planner_input = {
+        "normalized_intent": normalized_intent,
+        "chain_id": chain_id,
+        "wallet_snapshot": wallet_prompt_view,   # use existing snapshot (light-sliced)
+        "allowlisted_tokens": allowlisted_tokens,
+        "allowlisted_routers": allowlisted_routers,
+        "defaults": defaults,
+    }
+
+    state.artifacts["planner_input"] = planner_input
+
+    try:
+        raw_plan = run_tool(
+            db,
+            run_id=state.run_id,
+            step_id=step.id,
+            tool_name="llm.plan_tx",
+            request=planner_input,
+            fn=lambda: _plan_tx_stub(planner_input),
+        )
+
+        tx_plan = TxPlan.model_validate(raw_plan).model_dump()
+        state.artifacts["tx_plan"] = tx_plan
+
+        log_step(
+            db,
+            run_id=state.run_id,
+            step_name="PLAN_TX",
+            status="DONE",
+            output=tx_plan,
+            agent="LangGraph",
+        )
+        return state
+    except Exception as e:
+        log_step(
+            db,
+            run_id=state.run_id,
+            step_name="PLAN_TX",
+            status="FAILED",
+            error=f"{type(e).__name__}: {e}",
+            agent="LangGraph",
+        )
+        raise

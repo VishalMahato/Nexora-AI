@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from db.session import SessionLocal
+from db.repos.runs_repo import get_run
 from db.repos.run_steps_repo import list_steps_for_run
 from db.models.run import RunStatus
 
@@ -40,6 +41,7 @@ def test_start_run_transitions_and_logs_steps(client):
         assert artifacts["normalized_intent"] == "Start Run Test"
         assert artifacts["wallet_snapshot"]["native"]["balanceWei"] == "123"
         assert artifacts["tx_plan"]["type"] == "noop"
+        assert artifacts["tx_plan"]["plan_version"] == 1
         assert artifacts["simulation"]["status"] == "skipped"
 
         # --- NEW (F12) ---
@@ -49,11 +51,17 @@ def test_start_run_transitions_and_logs_steps(client):
 
     db = SessionLocal()
     try:
+        persisted = get_run(db, run_id)
+        assert persisted is not None
+        assert persisted.artifacts is not None
+        assert persisted.artifacts.get("tx_plan", {}).get("plan_version") == 1
+
         steps = list_steps_for_run(db, run_id=run_id)
         step_names = [x.step_name for x in steps]
 
         assert "INPUT_NORMALIZE" in step_names
         assert "WALLET_SNAPSHOT" in step_names
+        assert "PLAN_TX" in step_names
         assert "BUILD_TXS" in step_names
         assert "SIMULATE_TXS" in step_names
         assert "POLICY_EVAL" in step_names   # --- NEW ---
@@ -129,3 +137,31 @@ def test_start_run_blocked_by_policy(client, monkeypatch):
 
         assert body["status"] == RunStatus.BLOCKED.value
         assert body["artifacts"]["decision"]["action"] == "BLOCK"
+
+
+def test_start_run_plan_validation_failure_returns_500(client, monkeypatch):
+    payload = {
+        "intent": "Plan should fail",
+        "walletAddress": VALID_WALLET,
+        "chainId": 1,
+    }
+    r = client.post("/v1/runs", json=payload)
+    assert r.status_code == 200
+    run_id = r.json()["runId"]
+
+    fake_snapshot = {
+        "chainId": 1,
+        "walletAddress": VALID_WALLET,
+        "native": {"balanceWei": "123"},
+        "erc20": [],
+        "allowances": [],
+    }
+
+    def bad_plan(_planner_input):
+        return {"type": "plan", "actions": []}
+
+    monkeypatch.setattr("graph.nodes._plan_tx_stub", bad_plan)
+
+    with patch("chain.client.ChainClient.wallet_snapshot", return_value=fake_snapshot):
+        s = client.post(f"/v1/runs/{run_id}/start")
+        assert s.status_code == 500, s.text

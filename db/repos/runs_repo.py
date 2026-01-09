@@ -65,3 +65,48 @@ def update_run_status(
     db.commit()
     db.refresh(run)
     return run
+
+
+def update_run_artifacts(
+    db: Session,
+    *,
+    run_id: uuid.UUID,
+    artifacts: dict,
+) -> Run:
+    run = get_run(db, run_id)
+    if not run:
+        raise RunNotFoundError(f"Run not found: {run_id}")
+
+    run.artifacts = artifacts
+
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    return run
+
+
+def finalize_run(
+    db: Session,
+    *,
+    run_id: uuid.UUID,
+    artifacts: dict,
+    to_status: RunStatus,
+    expected_from: RunStatus | None = None,
+) -> Run:
+    run = get_run(db, run_id)
+    if not run:
+        raise RunNotFoundError(f"Run not found: {run_id}")
+
+    current = RunStatus(run.status)
+    if expected_from is not None and current != expected_from:
+        raise RunStatusConflictError(f"Expected {expected_from.value}, found {current.value}")
+
+    assert_valid_transition(current, to_status)
+
+    run.artifacts = artifacts
+    run.status = to_status.value
+
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    return run
