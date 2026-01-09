@@ -88,7 +88,7 @@ def test_tx_submitted_updates_status_and_artifacts(client, monkeypatch):
     a = client.post(f"/v1/runs/{run_id}/approve", json={"reviewer": "tester"})
     assert a.status_code == 200, a.text
 
-    payload = {"txHash": "0xabc123", "submittedBy": "manual"}
+    payload = {"txHash": "0x" + ("a" * 64), "submittedBy": "manual"}
     t = client.post(f"/v1/runs/{run_id}/tx_submitted", json=payload)
     assert t.status_code == 200, t.text
     assert t.json()["status"] == RunStatus.SUBMITTED.value

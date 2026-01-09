@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,6 +22,12 @@ from db.repos.run_steps_repo import log_step
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/runs", tags=["runs"])
+
+_TX_HASH_RE = re.compile(r"^0x[a-fA-F0-9]{64}$")
+
+
+def _is_tx_hash(value: str) -> bool:
+    return bool(_TX_HASH_RE.fullmatch(value or ""))
 
 
 @router.post("/{run_id}/execute", response_model=RunExecuteResponse)
@@ -94,6 +101,9 @@ def tx_submitted(
             status_code=409,
             detail=f"Run cannot accept submission from status={run.status}",
         )
+
+    if not _is_tx_hash(payload.txHash):
+        raise HTTPException(status_code=400, detail="Invalid txHash")
 
     log_step(
         db,

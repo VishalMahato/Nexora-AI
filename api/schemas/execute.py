@@ -21,7 +21,7 @@ class RunExecuteResponse(BaseModel):
 
 
 class TxSubmittedRequest(BaseModel):
-    txHash: str = Field(..., min_length=3, max_length=66)
+    txHash: str = Field(..., min_length=66, max_length=66)
     submittedBy: Literal["walletconnect", "metamask", "manual"]
 
 
