@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 import policy.engine as policy_engine
@@ -10,7 +12,7 @@ from web3 import Web3
 from app.config import get_settings
 from chain.client import ChainClient
 from db.repos.run_steps_repo import log_step
-from graph.schemas import TxPlan
+from graph.schemas import TxCandidate, TxPlan, TxAction
 from graph.state import RunState
 from tools.tool_runner import run_tool
 
@@ -273,12 +275,83 @@ def _min_wallet_prompt_view(
 
 def _plan_tx_stub(planner_input: Dict[str, Any]) -> Dict[str, Any]:
     normalized_intent = (planner_input.get("normalized_intent") or "").strip()
+    chain_id = planner_input.get("chain_id")
+
+    text = " ".join(normalized_intent.lower().split())
+    match = re.match(
+        r"^(send|transfer)\s+([0-9]+(?:\.[0-9]+)?)\s+(eth|matic)\s+to\s+(0x[a-fA-F0-9]{40})$",
+        text,
+    )
+    if not match:
+        return {
+            "plan_version": 1,
+            "type": "noop",
+            "reason": "no supported native transfer intent match",
+            "normalized_intent": normalized_intent,
+            "actions": [],
+            "candidates": [],
+        }
+
+    if not chain_id:
+        return {
+            "plan_version": 1,
+            "type": "noop",
+            "reason": "missing chain_id",
+            "normalized_intent": normalized_intent,
+            "actions": [],
+            "candidates": [],
+        }
+
+    amount_str = match.group(2)
+    asset = match.group(3).upper()
+    to_addr = match.group(4)
+
+    try:
+        amount_dec = Decimal(amount_str)
+    except InvalidOperation:
+        amount_dec = Decimal(0)
+
+    if amount_dec <= 0:
+        return {
+            "plan_version": 1,
+            "type": "noop",
+            "reason": "amount must be greater than zero",
+            "normalized_intent": normalized_intent,
+            "actions": [],
+            "candidates": [],
+        }
+
+    value_wei = str(int(amount_dec * (Decimal(10) ** 18)))
+    if value_wei == "0":
+        return {
+            "plan_version": 1,
+            "type": "noop",
+            "reason": "amount too small",
+            "normalized_intent": normalized_intent,
+            "actions": [],
+            "candidates": [],
+        }
+    candidate = TxCandidate(
+        chain_id=int(chain_id),
+        to=to_addr,
+        data="0x",
+        value_wei=value_wei,
+        meta={"asset": asset},
+    )
+    action = TxAction(
+        action="TRANSFER",
+        amount=amount_str,
+        to=to_addr,
+        chain_id=int(chain_id),
+        meta={"asset": asset},
+    )
+
     return {
         "plan_version": 1,
-        "type": "noop",
-        "reason": "planner not implemented yet (F14).",
+        "type": "plan",
         "normalized_intent": normalized_intent,
-        "actions": [],
+        "actions": [action.model_dump(by_alias=True)],
+        "candidates": [candidate.model_dump(by_alias=True)],
     }
 
 
@@ -349,7 +422,7 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
             fn=lambda: _plan_tx_stub(planner_input),
         )
 
-        tx_plan = TxPlan.model_validate(raw_plan).model_dump()
+        tx_plan = TxPlan.model_validate(raw_plan).model_dump(by_alias=True)
         state.artifacts["tx_plan"] = tx_plan
 
         log_step(
