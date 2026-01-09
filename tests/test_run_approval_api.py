@@ -80,7 +80,7 @@ def test_reject_happy_path(client):
 
     r = client.post(
         f"/v1/runs/{run_id}/reject",
-        json={"reviewer": "visha", "reason": "not comfortable"},
+        json={"reviewer": "vishal;", "reason": "not comfortable"},
     )
     assert r.status_code == 200, r.text
     assert r.json()["status"] == RunStatus.REJECTED.value

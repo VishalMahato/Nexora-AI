@@ -17,7 +17,9 @@ wheels/
 .env.*
 
 
-docs/explained/
+docs/explained/*
+!docs/explained/code-till-f13.md
+!docs/explained/nexora_product_docs-v2.md
 
 # Logs
 *.log

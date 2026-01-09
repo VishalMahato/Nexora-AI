@@ -10,29 +10,37 @@ from graph.state import RunState
 from graph.nodes import (
     input_normalize,
     wallet_snapshot,
+    plan_tx,         # ✅ ADD
     build_txs,
     simulate_txs,
-    policy_eval,      
+    policy_eval,
     finalize,
 )
 
+
 def build_graph() -> StateGraph:
     """
-    INPUT_NORMALIZE -> WALLET_SNAPSHOT -> BUILD_TXS -> SIMULATE_TXS -> FINALIZE -> END
+    INPUT_NORMALIZE -> WALLET_SNAPSHOT -> PLAN_TX -> BUILD_TXS
+    -> SIMULATE_TXS -> POLICY_EVAL -> FINALIZE -> END
     """
     graph = StateGraph(RunState)
 
     graph.add_node("INPUT_NORMALIZE", input_normalize)
-    graph.add_node("POLICY_EVAL", policy_eval)
     graph.add_node("WALLET_SNAPSHOT", wallet_snapshot)
+    graph.add_node("PLAN_TX", plan_tx)          # ✅ ADD
     graph.add_node("BUILD_TXS", build_txs)
     graph.add_node("SIMULATE_TXS", simulate_txs)
+    graph.add_node("POLICY_EVAL", policy_eval)
     graph.add_node("FINALIZE", finalize)
 
     graph.set_entry_point("INPUT_NORMALIZE")
 
     graph.add_edge("INPUT_NORMALIZE", "WALLET_SNAPSHOT")
-    graph.add_edge("WALLET_SNAPSHOT", "BUILD_TXS")
+
+    # ✅ INSERT PLAN_TX in the pipeline
+    graph.add_edge("WALLET_SNAPSHOT", "PLAN_TX")
+    graph.add_edge("PLAN_TX", "BUILD_TXS")
+
     graph.add_edge("BUILD_TXS", "SIMULATE_TXS")
     graph.add_edge("SIMULATE_TXS", "POLICY_EVAL")
     graph.add_edge("POLICY_EVAL", "FINALIZE")

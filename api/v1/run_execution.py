@@ -13,6 +13,8 @@ from db.repos.runs_repo import (
     RunNotFoundError,
     RunStatusConflictError,
     get_run,
+    finalize_run,
+    update_run_artifacts,
     update_run_status,
 )
 from graph.graph import run_graph
@@ -88,9 +90,10 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
         else:
             final_status = RunStatus.AWAITING_APPROVAL
 
-        update_run_status(
+        finalize_run(
             db,
             run_id=run_id,
+            artifacts=artifacts,
             to_status=final_status,
             expected_from=RunStatus.RUNNING,
         )
@@ -103,6 +106,12 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
         }
 
     except Exception as e:
+        # Best-effort artifact persistence for debugging.
+        try:
+            if "artifacts" in locals() and isinstance(artifacts, dict):
+                update_run_artifacts(db, run_id=run_id, artifacts=artifacts)
+        except Exception:
+            pass
         # Mark failed (FSM-correct)
         try:
             update_run_status(

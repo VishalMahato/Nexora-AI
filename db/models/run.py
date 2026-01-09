@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from db.utils.time import utcnow
@@ -44,6 +45,7 @@ class Run(Base):
 
     error_code: Mapped[str | None] = mapped_column(String, nullable=True)
     error_message: Mapped[str | None] = mapped_column(String, nullable=True)
+    artifacts: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     created_at = mapped_column(
         DateTime(timezone=True),
