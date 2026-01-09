@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Any
 
 from web3 import Web3
-from web3.exceptions import ContractLogicError
+from web3.exceptions import ContractLogicError, TransactionNotFound
 
 from chain.chains import get_rpc_url
 from chain.abis import ERC20_ABI
@@ -170,3 +170,16 @@ def get_fee_quote(chain_id: int) -> dict[str, Any]:
         return {"gasPrice": int(w3.eth.gas_price)}
     except Exception as e:
         raise Web3RPCError(f"get_fee_quote failed: {e}") from e
+
+
+def get_transaction_receipt(chain_id: int, tx_hash: str) -> Any | None:
+    """
+    Fetch a transaction receipt or return None if not found yet.
+    """
+    w3 = _get_web3(chain_id)
+    try:
+        return w3.eth.get_transaction_receipt(tx_hash)
+    except TransactionNotFound:
+        return None
+    except Exception as e:
+        raise Web3RPCError(f"get_transaction_receipt failed: {e}") from e

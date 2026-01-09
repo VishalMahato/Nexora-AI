@@ -6,6 +6,8 @@ TERMINAL = {
     RunStatus.FAILED,
     RunStatus.REJECTED,
     RunStatus.BLOCKED,
+    RunStatus.CONFIRMED,
+    RunStatus.REVERTED,
 }
 
 ALLOWED = {
@@ -13,7 +15,9 @@ ALLOWED = {
     RunStatus.RUNNING: {RunStatus.AWAITING_APPROVAL, RunStatus.FAILED, RunStatus.BLOCKED},
     RunStatus.AWAITING_APPROVAL: {RunStatus.APPROVED_READY, RunStatus.REJECTED},
     RunStatus.APPROVED_READY: {RunStatus.SUBMITTED},
-    RunStatus.SUBMITTED: set(),
+    RunStatus.SUBMITTED: {RunStatus.CONFIRMED, RunStatus.REVERTED},
+    RunStatus.CONFIRMED: set(),
+    RunStatus.REVERTED: set(),
     RunStatus.FAILED: set(),
     RunStatus.REJECTED: set(),
     RunStatus.BLOCKED: set(),

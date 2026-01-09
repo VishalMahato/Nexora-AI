@@ -256,6 +256,60 @@ class ChainClient:
         )
         return {k: str(v) for k, v in fee_quote.items()}
 
+    def _serialize_receipt_value(self, value: Any) -> Any:
+        if isinstance(value, (bytes, bytearray)):
+            return "0x" + value.hex()
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            return value
+        if hasattr(value, "hex") and callable(value.hex):
+            hex_value = value.hex()
+            if isinstance(hex_value, str):
+                return hex_value if hex_value.startswith("0x") else "0x" + hex_value
+        if isinstance(value, dict):
+            return {k: self._serialize_receipt_value(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self._serialize_receipt_value(v) for v in value]
+        return str(value)
+
+    def _serialize_receipt(self, receipt: Any) -> dict[str, Any]:
+        if receipt is None:
+            return {}
+        data = receipt
+        if hasattr(receipt, "items") and not isinstance(receipt, dict):
+            data = dict(receipt)
+        if not isinstance(data, dict):
+            return {"receipt": self._serialize_receipt_value(data)}
+
+        allowed = ["blockNumber", "status", "gasUsed", "transactionHash"]
+        out: dict[str, Any] = {}
+        for key in allowed:
+            if key in data:
+                out[key] = self._serialize_receipt_value(data[key])
+        return out
+
+    def get_tx_receipt(
+        self,
+        *,
+        db: Session,
+        run_id,
+        step_id,
+        chain_id: int,
+        tx_hash: str,
+    ) -> dict[str, Any] | None:
+        receipt = run_tool(
+            db,
+            run_id=run_id,
+            step_id=step_id,
+            tool_name="rpc.get_tx_receipt",
+            request={"chainId": chain_id, "txHash": tx_hash},
+            fn=lambda: self._serialize_receipt(rpc.get_transaction_receipt(chain_id, tx_hash)),
+        )
+        if not receipt:
+            return None
+        return receipt
+
     def simulate_tx(
         self,
         *,
