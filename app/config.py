@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     database_url: str = ""
     web3_service_url: str = ""
     llm_model: str = "gpt-4o-mini"  # safe default- override via env
+    llm_enabled: bool = False
+    llm_provider: str = "openai"
+    openai_api_key: str | None = None
+    llm_temperature: float = 0.0
+    llm_timeout_s: int = 30
     rpc_urls: str = "" 
     allowlist_to: str = Field(default="[]", alias="ALLOWLIST_TO")
     # --- observability ---
@@ -50,6 +55,26 @@ class Settings(BaseSettings):
     @property
     def LLM_MODEL(self) -> str:
         return self.llm_model
+
+    @property
+    def LLM_ENABLED(self) -> bool:
+        return self.llm_enabled
+
+    @property
+    def LLM_PROVIDER(self) -> str:
+        return self.llm_provider
+
+    @property
+    def OPENAI_API_KEY(self) -> str | None:
+        return self.openai_api_key
+
+    @property
+    def LLM_TEMPERATURE(self) -> float:
+        return self.llm_temperature
+
+    @property
+    def LLM_TIMEOUT_S(self) -> int:
+        return self.llm_timeout_s
     @property
     def RPC_URLS(self) -> str:
         return self.rpc_urls

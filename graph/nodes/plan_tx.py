@@ -10,6 +10,8 @@ from app.config import get_settings
 from db.repos.run_steps_repo import log_step
 from graph.schemas import TxCandidate, TxPlan, TxAction
 from graph.state import RunState
+from llm.client import LLMClient
+from llm.prompts import build_plan_tx_prompt
 from tools.tool_runner import run_tool
 
 
@@ -130,6 +132,17 @@ def _plan_tx_stub(planner_input: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _noop_plan(normalized_intent: str, reason: str) -> Dict[str, Any]:
+    return {
+        "plan_version": 1,
+        "type": "noop",
+        "reason": reason,
+        "normalized_intent": normalized_intent,
+        "actions": [],
+        "candidates": [],
+    }
+
+
 def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
     db: Session = config["configurable"]["db"]
     settings = get_settings()
@@ -184,16 +197,69 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
     state.artifacts["planner_input"] = planner_input
 
     try:
-        raw_plan = run_tool(
-            db,
-            run_id=state.run_id,
-            step_id=step.id,
-            tool_name="llm.plan_tx",
-            request=planner_input,
-            fn=lambda: _plan_tx_stub(planner_input),
-        )
+        planner_warnings: List[str] = []
+        llm_error: str | None = None
+        llm_used = False
+        fallback_used = False
 
-        tx_plan = TxPlan.model_validate(raw_plan).model_dump(by_alias=True)
+        tx_plan = None
+        if settings.LLM_ENABLED:
+            llm_client = LLMClient(
+                model=settings.LLM_MODEL,
+                provider=settings.LLM_PROVIDER,
+                api_key=settings.OPENAI_API_KEY,
+                temperature=settings.LLM_TEMPERATURE,
+                timeout_s=settings.LLM_TIMEOUT_S,
+            )
+            prompt = build_plan_tx_prompt(planner_input)
+            try:
+                raw_plan = run_tool(
+                    db,
+                    run_id=state.run_id,
+                    step_id=step.id,
+                    tool_name="llm.plan_tx",
+                    request={"planner_input": planner_input, "prompt": prompt},
+                    fn=lambda: llm_client.plan_tx(planner_input=planner_input),
+                )
+                llm_used = True
+                tx_plan = TxPlan.model_validate(raw_plan).model_dump(by_alias=True)
+            except Exception as e:
+                llm_error = f"{type(e).__name__}: {e}"
+                planner_warnings.append("llm planner failed; fallback to deterministic stub")
+                fallback_used = True
+
+        if tx_plan is None:
+            raw_plan = _plan_tx_stub(planner_input)
+            tx_plan = TxPlan.model_validate(raw_plan).model_dump(by_alias=True)
+
+        max_actions = 3
+        max_candidates = 3
+        if len(tx_plan.get("actions") or []) > max_actions:
+            planner_warnings.append("planner output exceeded action limit; converted to noop")
+            tx_plan = _noop_plan(normalized_intent, "planner output exceeded action limit")
+            fallback_used = True
+        if len(tx_plan.get("candidates") or []) > max_candidates:
+            planner_warnings.append("planner output exceeded candidate limit; converted to noop")
+            tx_plan = _noop_plan(normalized_intent, "planner output exceeded candidate limit")
+            fallback_used = True
+
+        allowlisted_to = settings.allowlisted_to_set()
+        if allowlisted_to:
+            non_allowlisted = [
+                (c.get("to") or "").lower()
+                for c in (tx_plan.get("candidates") or [])
+                if (c.get("to") or "").lower() not in allowlisted_to
+            ]
+            if non_allowlisted:
+                planner_warnings.append("target not in allowlist; policy may block")
+
+        if planner_warnings:
+            state.artifacts["planner_warnings"] = planner_warnings
+        if fallback_used:
+            state.artifacts["planner_fallback"] = {"used": True, "error": llm_error}
+        if llm_error:
+            state.artifacts["planner_llm_error"] = llm_error
+        state.artifacts["planner_llm_used"] = llm_used
         state.artifacts["tx_plan"] = tx_plan
 
         log_step(
@@ -201,7 +267,12 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
             run_id=state.run_id,
             step_name="PLAN_TX",
             status="DONE",
-            output=tx_plan,
+            output={
+                "tx_plan": tx_plan,
+                "planner_warnings": planner_warnings,
+                "llm_error": llm_error,
+                "llm_used": llm_used,
+            },
             agent="LangGraph",
         )
         return state
