@@ -14,6 +14,7 @@ from graph.nodes import (
     build_txs,
     simulate_txs,
     policy_eval,
+    security_eval,
     finalize,
 )
 
@@ -21,7 +22,7 @@ from graph.nodes import (
 def build_graph() -> StateGraph:
     """
     INPUT_NORMALIZE -> WALLET_SNAPSHOT -> PLAN_TX -> BUILD_TXS
-    -> SIMULATE_TXS -> POLICY_EVAL -> FINALIZE -> END
+    -> SIMULATE_TXS -> POLICY_EVAL -> SECURITY_EVAL -> FINALIZE -> END
     """
     graph = StateGraph(RunState)
 
@@ -31,6 +32,7 @@ def build_graph() -> StateGraph:
     graph.add_node("BUILD_TXS", build_txs)
     graph.add_node("SIMULATE_TXS", simulate_txs)
     graph.add_node("POLICY_EVAL", policy_eval)
+    graph.add_node("SECURITY_EVAL", security_eval)
     graph.add_node("FINALIZE", finalize)
 
     graph.set_entry_point("INPUT_NORMALIZE")
@@ -43,7 +45,8 @@ def build_graph() -> StateGraph:
 
     graph.add_edge("BUILD_TXS", "SIMULATE_TXS")
     graph.add_edge("SIMULATE_TXS", "POLICY_EVAL")
-    graph.add_edge("POLICY_EVAL", "FINALIZE")
+    graph.add_edge("POLICY_EVAL", "SECURITY_EVAL")
+    graph.add_edge("SECURITY_EVAL", "FINALIZE")
     graph.add_edge("FINALIZE", END)
 
     return graph

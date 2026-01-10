@@ -57,6 +57,13 @@ def test_start_run_transitions_and_logs_steps(client):
         assert "decision" in artifacts
         assert artifacts["decision"]["action"] == "NEEDS_APPROVAL"
 
+        # --- NEW (F20) ---
+        assert "planner_result" in artifacts
+        assert "security_result" in artifacts
+        assert "judge_result" in artifacts
+        assert isinstance(artifacts.get("timeline"), list)
+        assert len(artifacts.get("timeline")) >= 2
+
     db = SessionLocal()
     try:
         persisted = get_run(db, run_id)
@@ -73,6 +80,7 @@ def test_start_run_transitions_and_logs_steps(client):
         assert "BUILD_TXS" in step_names
         assert "SIMULATE_TXS" in step_names
         assert "POLICY_EVAL" in step_names   # --- NEW ---
+        assert "SECURITY_EVAL" in step_names
         assert "FINALIZE" in step_names
     finally:
         db.close()
