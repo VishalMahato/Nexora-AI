@@ -1,0 +1,67 @@
+from __future__ import annotations
+
+import json
+from typing import Any, Dict
+
+
+SYSTEM_PROMPT = (
+    "You are Nexora planner. Output ONLY valid JSON matching the TxPlan schema. "
+    "Do not include markdown or commentary. "
+    "Schema requirements: "
+    "plan_version (int, use 1), type ('noop' or 'plan'), reason (string or null), "
+    "normalized_intent (string), actions (list), candidates (list). "
+    "Each candidate requires: chain_id (int), to (0x address), data (0x hex), "
+    "valueWei (string). "
+    "Respect allowlists and defaults. If unsure, return a noop plan with a reason."
+)
+
+
+def build_plan_tx_prompt(planner_input: Dict[str, Any]) -> Dict[str, str]:
+    user_payload = {
+        "normalized_intent": planner_input.get("normalized_intent"),
+        "chain_id": planner_input.get("chain_id"),
+        "wallet_snapshot": planner_input.get("wallet_snapshot"),
+        "allowlisted_tokens": planner_input.get("allowlisted_tokens"),
+        "allowlisted_routers": planner_input.get("allowlisted_routers"),
+        "defaults": planner_input.get("defaults"),
+    }
+    examples = [
+        {
+            "plan_version": 1,
+            "type": "noop",
+            "reason": "insufficient information or unsupported intent",
+            "normalized_intent": "swap eth to usdc",
+            "actions": [],
+            "candidates": [],
+        },
+        {
+            "plan_version": 1,
+            "type": "plan",
+            "normalized_intent": "send 0.01 eth to 0x1111111111111111111111111111111111111111",
+            "actions": [
+                {
+                    "action": "TRANSFER",
+                    "amount": "0.01",
+                    "to": "0x1111111111111111111111111111111111111111",
+                    "chain_id": 1,
+                    "meta": {"asset": "ETH"},
+                }
+            ],
+            "candidates": [
+                {
+                    "chain_id": 1,
+                    "to": "0x1111111111111111111111111111111111111111",
+                    "data": "0x",
+                    "valueWei": "10000000000000000",
+                    "meta": {"asset": "ETH"},
+                }
+            ],
+        },
+    ]
+    user = (
+        "Plan a transaction using the provided input. "
+        "Return ONLY JSON that matches the schema.\n"
+        f"Examples: {json.dumps(examples, ensure_ascii=True)}\n"
+        f"Input: {json.dumps(user_payload, ensure_ascii=True)}"
+    )
+    return {"system": SYSTEM_PROMPT, "user": user}
