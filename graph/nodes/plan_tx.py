@@ -7,7 +7,9 @@ from typing import Any, Dict, List, Optional
 from langchain_core.runnables import RunnableConfig
 from sqlalchemy.orm import Session
 from app.config import get_settings
+from app.contracts.agent_result import AgentResult, Explanation, RiskItem
 from db.repos.run_steps_repo import log_step
+from graph.artifacts import append_timeline_event, agent_result_to_timeline, put_artifact
 from graph.schemas import TxCandidate, TxPlan, TxAction
 from graph.state import RunState
 from llm.client import LLMClient
@@ -228,6 +230,7 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
                 planner_warnings.append("llm planner failed; fallback to deterministic stub")
                 fallback_used = True
 
+
         if tx_plan is None:
             raw_plan = _plan_tx_stub(planner_input)
             tx_plan = TxPlan.model_validate(raw_plan).model_dump(by_alias=True)
@@ -262,6 +265,46 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
         state.artifacts["planner_llm_used"] = llm_used
         state.artifacts["tx_plan"] = tx_plan
 
+        risk_items = [
+            RiskItem(severity="MED", title="Planner warning", detail=warning)
+            for warning in planner_warnings
+        ]
+        summary = (
+            "Planner returned a noop plan."
+            if tx_plan.get("type") == "noop"
+            else "Planner produced a transaction plan."
+        )
+        if fallback_used:
+            summary = f"{summary} Fallback planner was used."
+        status = "WARN" if planner_warnings or fallback_used else "OK"
+        errors = [llm_error] if llm_error else None
+
+        planner_result = AgentResult(
+            agent="planner",
+            step_name="PLAN_TX",
+            status=status,
+            output={"tx_plan": tx_plan},
+            explanation=Explanation(
+                summary=summary,
+                assumptions=[],
+                why_safe=[],
+                risks=risk_items,
+                next_steps=[],
+            ),
+            confidence=None,
+            sources=[
+                "normalized_intent",
+                "wallet_snapshot",
+                "allowlisted_tokens",
+                "allowlisted_routers",
+                "defaults",
+            ],
+            errors=errors,
+        ).to_public_dict()
+
+        put_artifact(state, "planner_result", planner_result)
+        append_timeline_event(state, agent_result_to_timeline(planner_result))
+
         log_step(
             db,
             run_id=state.run_id,
@@ -272,10 +315,11 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
                 "planner_warnings": planner_warnings,
                 "llm_error": llm_error,
                 "llm_used": llm_used,
+                "planner_result": planner_result,
             },
             agent="LangGraph",
         )
-        return state
+
     except Exception as e:
         log_step(
             db,

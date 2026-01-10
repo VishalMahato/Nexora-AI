@@ -1,0 +1,12 @@
+.git
+.pytest_cache
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+uv.lock
+*.log
+dist
+build

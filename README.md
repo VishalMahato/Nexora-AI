@@ -22,12 +22,25 @@ Client -> FastAPI -> LangGraph -> Policy Engine -> Web3 RPC
 - Python 3.12
 - PostgreSQL 14+
 
-## Quick start
+## Local setup
 ```bash
 uv venv
 uv pip install -r requirements.txt
 uv run uvicorn app.main:app --reload
 ```
+If you prefer plain `venv`:
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+## Docker setup (auto-reload)
+```bash
+docker compose up --build
+```
+`docker-compose.override.yml` bind-mounts the repo and enables `--reload`.
 
 ## Configuration
 Create a `.env` (see `.env.example`):
@@ -67,7 +80,7 @@ If the intent does not match this format, the planner returns a noop plan.
 
 ## Tests
 ```bash
-pytest
+uv run pytest
 ```
 
 ## Project layout
