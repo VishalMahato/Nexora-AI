@@ -230,6 +230,7 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
                 planner_warnings.append("llm planner failed; fallback to deterministic stub")
                 fallback_used = True
 
+
         if tx_plan is None:
             raw_plan = _plan_tx_stub(planner_input)
             tx_plan = TxPlan.model_validate(raw_plan).model_dump(by_alias=True)
@@ -318,7 +319,7 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
             },
             agent="LangGraph",
         )
-        return state
+
     except Exception as e:
         log_step(
             db,

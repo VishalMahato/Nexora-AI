@@ -106,7 +106,7 @@ def test_poll_tx_confirms_run_on_success_receipt(client, monkeypatch):
     finally:
         db.close()
 
-
+ 
 def test_poll_tx_marks_reverted_on_failure_receipt(client, monkeypatch):
     recipient = "0x6666666666666666666666666666666666666666"
     run_id, tx_hash = _create_and_submit_run(client, monkeypatch=monkeypatch, recipient=recipient)
