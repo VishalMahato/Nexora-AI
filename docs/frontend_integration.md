@@ -264,6 +264,34 @@ Each tool call includes `tool_name`, `request`, `response`, and timestamps.
 { "step": "PLAN_TX", "status": "OK", "title": "PLANNER", "summary": "..." }
 ```
 
+## Simulation shape (sequential)
+
+When multiple tx requests are present, simulation runs in order and may mark a
+swap as assumed success if allowance cannot be applied in a stateless `eth_call`:
+
+```json
+{
+  "status": "completed",
+  "mode": "sequential",
+  "sequence": ["approve-1", "swap-1"],
+  "override_support": "unsupported",
+  "overrides_used": false,
+  "results": [
+    {
+      "txRequestId": "approve-1",
+      "success": true,
+      "assumed_success": false
+    },
+    {
+      "txRequestId": "swap-1",
+      "success": true,
+      "assumed_success": true,
+      "assumption_reason": "ALLOWANCE_NOT_APPLIED_IN_SIMULATION"
+    }
+  ]
+}
+```
+
 ## Common UI states
 
 - `BLOCKED`: show `artifacts.decision.reasons`
