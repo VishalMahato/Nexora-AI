@@ -17,7 +17,14 @@ def test_chat_query_mode(client):
             "reason": "wallet query",
         },
     ):
-        resp = client.post("/v1/chat/route", json={"message": "what's my balance?"})
+        resp = client.post(
+            "/v1/chat/route",
+            json={
+                "message": "what's my balance?",
+                "wallet_address": "0x1111111111111111111111111111111111111111",
+                "chain_id": 1,
+            },
+        )
 
     assert resp.status_code == 200
     body = resp.json()

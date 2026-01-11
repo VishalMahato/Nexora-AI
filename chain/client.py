@@ -7,6 +7,7 @@ from web3 import Web3
 
 from tools.tool_runner import run_tool
 from chain import rpc
+from chain.snapshot import fetch_wallet_snapshot
 
 
 class ChainClient:
@@ -134,6 +135,21 @@ class ChainClient:
             "erc20": token_balances,
             "allowances": allowance_rows,
         }
+
+    def wallet_snapshot_no_log(
+        self,
+        *,
+        chain_id: int,
+        wallet_address: str,
+        erc20_tokens: list[str] | None = None,
+        allowances: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        return fetch_wallet_snapshot(
+            chain_id=chain_id,
+            wallet_address=wallet_address,
+            erc20_tokens=erc20_tokens,
+            allowances=allowances,
+        )
 
     # ---------------------------
     # Tx builders (templates only)
