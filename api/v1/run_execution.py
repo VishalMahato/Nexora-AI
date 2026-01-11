@@ -8,32 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from db.deps import get_db
-from db.models.run import RunStatus
-from db.repos.runs_repo import (
-    RunNotFoundError,
-    RunStatusConflictError,
-    get_run,
-    finalize_run,
-    update_run_artifacts,
-    update_run_status,
-)
-from graph.graph import run_graph
-from graph.state import RunState
+from db.repos.runs_repo import RunNotFoundError, RunStatusConflictError
+from app.services.runs_service import start_run_sync
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/runs", tags=["runs"])
-
-def _resolve_final_status(artifacts: dict) -> RunStatus:
-    judge_result = artifacts.get("judge_result") or {}
-    verdict = (judge_result.get("output") or {}).get("verdict")
-    decision = artifacts.get("decision") or {}
-    action = decision.get("action")
-
-    if verdict == "BLOCK" or action == "BLOCK":
-        return RunStatus.BLOCKED
-    return RunStatus.AWAITING_APPROVAL
-
 
 @router.post("/{run_id}/start")
 def start_run(run_id: UUID, db: Session = Depends(get_db)):
@@ -50,85 +30,11 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
     """
     logger.info("start_run called")
 
-    run = get_run(db, run_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
-
-    # Only allow starting from CREATED
-    if RunStatus(run.status) != RunStatus.CREATED:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Run cannot be started from status={run.status}",
-        )
-
-    # Transition to RUNNING (optimistic lock via expected_from)
     try:
-        run = update_run_status(
-            db,
-            run_id=run_id,
-            to_status=RunStatus.RUNNING,
-            expected_from=RunStatus.CREATED,
-        )
+        return start_run_sync(db=db, run_id=run_id)
     except RunNotFoundError:
         raise HTTPException(status_code=404, detail="Run not found")
     except (RunStatusConflictError, ValueError) as e:
         raise HTTPException(status_code=409, detail=str(e))
-
-    try:
-        state = RunState(
-            run_id=run.id,
-            intent=run.intent,
-            status=RunStatus.RUNNING,
-            chain_id=run.chain_id,
-            wallet_address=run.wallet_address,
-        )
-
-        final_state = run_graph(db, state)
-
-        artifacts = (
-            final_state.artifacts
-            if hasattr(final_state, "artifacts")
-            else final_state.get("artifacts", {})
-        )
-
-        final_status = _resolve_final_status(artifacts)
-
-        finalize_run(
-            db,
-            run_id=run_id,
-            artifacts=artifacts,
-            to_status=final_status,
-            expected_from=RunStatus.RUNNING,
-        )
-
-        return {
-            "ok": True,
-            "runId": str(run.id),
-            "status": final_status.value,
-            "artifacts": artifacts,
-        }
-
-    except Exception as e:
-        # Best-effort artifact persistence for debugging.
-        try:
-            if "artifacts" in locals() and isinstance(artifacts, dict):
-                update_run_artifacts(db, run_id=run_id, artifacts=artifacts)
-        except Exception:
-            pass
-        # Mark failed (FSM-correct)
-        try:
-            update_run_status(
-                db,
-                run_id=run_id,
-                to_status=RunStatus.FAILED,
-                expected_from=RunStatus.RUNNING,
-                error_code="GRAPH_EXECUTION_ERROR",
-                error_message=f"{type(e).__name__}: {e}",
-            )
-        except Exception:
-            pass
-
-        raise HTTPException(
-            status_code=500,
-            detail=f"Run execution failed: {type(e).__name__}: {e}",
-        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))

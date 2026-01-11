@@ -4,14 +4,13 @@ from uuid import UUID
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from db.repos.run_steps_repo import log_step
 
 # from db.models.run import RunStatus
 
 from db.deps import get_db
-from db.repos.runs_repo import create_run, get_run
-from db.repos.tool_calls_repo import log_tool_call
+from db.repos.runs_repo import get_run
 from db.repos.tool_calls_repo import list_tool_calls_for_run
+from app.services.runs_service import create_run_with_audit
 
 from api.schemas.runs import (
     RunCreateRequest,
@@ -57,35 +56,18 @@ def _build_run_response(
 def create_run_endpoint(payload: RunCreateRequest, db: Session = Depends(get_db)) -> RunCreateResponse:
     _validate_wallet_address(payload.walletAddress)
 
-    run = create_run(
-        db,
+    run_id = create_run_with_audit(
+        db=db,
         intent=payload.intent,
         wallet_address=payload.walletAddress,
         chain_id=payload.chainId,
-    )
-    created_step = log_step(
-    db,
-    run_id=run.id,
-    step_name="RUN_CREATED",
-    status="DONE",
-    output={"status": run.status},
-    agent="API",
-    )
-
-    # ---- F7 minimal proof: fake tool call ----
-    log_tool_call(
-        db,
-        run_id=run.id,
-        step_id=created_step.id,
+        agent="API",
         tool_name="api_create_run",
-        request={
-            "intent": payload.intent,
-            "walletAddress": payload.walletAddress,
-            "chainId": payload.chainId,
-        },
-        response={"run_id": str(run.id)},
     )
 
+    run = get_run(db, run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
 
     return RunCreateResponse(runId=run.id, status=run.status)
 

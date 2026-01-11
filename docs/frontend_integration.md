@@ -70,6 +70,20 @@ Note: `planner_result.output.tx_plan.candidates` may be empty. The compiler fill
 `artifacts.tx_requests` (and compiled candidates in `artifacts.tx_plan`) later.
 For execution, always use `artifacts.tx_requests`.
 
+## Chat routing (F25)
+
+POST `/v1/chat/route`
+
+Response includes:
+
+- `mode: QUERY|ACTION|CLARIFY`
+- `classification` (intent_type, slots, missing_slots)
+- `run_id` / `run_ref` when ACTION triggers a run
+
+Frontend should map UI state from `run_ref.status` (or fetch the run status).
+If present, `next_ui` may include `SHOW_APPROVAL_SCREEN` when a run is ready
+for approval.
+
 ## 3) Approve or reject
 
 POST `/v1/runs/{runId}/approve`

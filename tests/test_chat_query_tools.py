@@ -25,7 +25,11 @@ def test_chat_query_balance(client):
     ):
         resp = client.post(
             "/v1/chat/route",
-            json={"message": "what is my usdc balance?", "wallet_address": "0xabc", "chain_id": 1},
+            json={
+                "message": "what is my usdc balance?",
+                "wallet_address": "0x1111111111111111111111111111111111111111",
+                "chain_id": 1,
+            },
         )
 
     assert resp.status_code == 200
@@ -55,7 +59,11 @@ def test_chat_query_snapshot(client):
     ):
         resp = client.post(
             "/v1/chat/route",
-            json={"message": "show my wallet", "wallet_address": "0xabc", "chain_id": 1},
+            json={
+                "message": "show my wallet",
+                "wallet_address": "0x1111111111111111111111111111111111111111",
+                "chain_id": 1,
+            },
         )
 
     assert resp.status_code == 200
@@ -104,7 +112,7 @@ def test_chat_query_allowlists(client):
     ):
         resp = client.post(
             "/v1/chat/route",
-            json={"message": "what are the supported tokens?", "wallet_address": "0xabc", "chain_id": 1},
+            json={"message": "what are the supported tokens?"},
         )
 
     assert resp.status_code == 200

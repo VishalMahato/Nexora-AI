@@ -347,7 +347,7 @@ def test_start_run_judge_verdict_mapping(client, monkeypatch):
         def fake_run_graph(_db, _state, *, _artifacts=artifacts):
             return {"artifacts": _artifacts}
 
-        monkeypatch.setattr("api.v1.run_execution.run_graph", fake_run_graph)
+        monkeypatch.setattr("app.services.runs_service.run_graph", fake_run_graph)
 
         s = client.post(f"/v1/runs/{run_id}/start")
         assert s.status_code == 200, s.text

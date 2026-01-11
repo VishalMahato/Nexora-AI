@@ -6,16 +6,22 @@ from app.chat.contracts import IntentMode
 
 
 def test_chat_query_mode(client):
-    with patch(
-        "app.chat.router.classify_intent",
-        return_value={
-            "mode": "QUERY",
-            "intent_type": "BALANCE",
-            "confidence": 0.9,
-            "slots": {},
-            "missing_slots": [],
-            "reason": "wallet query",
-        },
+    with (
+        patch(
+            "app.chat.router.classify_intent",
+            return_value={
+                "mode": "QUERY",
+                "intent_type": "BALANCE",
+                "confidence": 0.9,
+                "slots": {},
+                "missing_slots": [],
+                "reason": "wallet query",
+            },
+        ),
+        patch(
+            "app.chat.router.get_wallet_snapshot",
+            return_value={"native": {"balanceWei": "1"}, "erc20": [], "allowances": []},
+        ),
     ):
         resp = client.post(
             "/v1/chat/route",
@@ -34,18 +40,29 @@ def test_chat_query_mode(client):
 
 
 def test_chat_action_mode(client):
-    with patch(
-        "app.chat.router.classify_intent",
-        return_value={
-            "mode": "ACTION",
-            "intent_type": "SWAP",
-            "confidence": 0.9,
-            "slots": {"token_in": "USDC", "token_out": "WETH", "amount_in": "1"},
-            "missing_slots": [],
-            "reason": "actionable swap",
-        },
+    with (
+        patch(
+            "app.chat.router.classify_intent",
+            return_value={
+                "mode": "ACTION",
+                "intent_type": "SWAP",
+                "confidence": 0.9,
+                "slots": {"token_in": "USDC", "token_out": "WETH", "amount_in": "1"},
+                "missing_slots": [],
+                "reason": "actionable swap",
+            },
+        ),
+        patch("app.chat.router.create_run_from_action", return_value="123e4567-e89b-12d3-a456-426614174000"),
+        patch("app.chat.router.start_run_for_action", return_value={"status": "AWAITING_APPROVAL"}),
     ):
-        resp = client.post("/v1/chat/route", json={"message": "swap 1 usdc to weth"})
+        resp = client.post(
+            "/v1/chat/route",
+            json={
+                "message": "swap 1 usdc to weth",
+                "wallet_address": "0x1111111111111111111111111111111111111111",
+                "chain_id": 1,
+            },
+        )
 
     assert resp.status_code == 200
     body = resp.json()

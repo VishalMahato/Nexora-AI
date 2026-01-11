@@ -33,6 +33,14 @@ class IntentClassification(BaseModel):
     reason: str | None = None
 
 
+class RunRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    status: str | None = None
+    fetch_url: str | None = None
+
+
 class ChatRouteResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -40,6 +48,7 @@ class ChatRouteResponse(BaseModel):
     assistant_message: str
     questions: list[str] = Field(default_factory=list)
     run_id: str | None = None
+    run_ref: RunRef | None = None
     data: dict[str, Any] = Field(default_factory=dict)
     next_ui: str | None = None
     classification: IntentClassification | None = None
