@@ -18,7 +18,8 @@ from db.repos.tool_calls_repo import list_tool_calls_for_run
 @pytest.fixture()
 def client():
     app = create_app()
-    return TestClient(app)
+    with TestClient(app) as client:
+        yield client
 
 
 def _cleanup_run(run_id: uuid.UUID) -> None:

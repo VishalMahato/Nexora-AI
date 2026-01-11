@@ -17,10 +17,9 @@ def test_app_starts_without_langsmith_env(monkeypatch):
     monkeypatch.delenv("LANGCHAIN_ENDPOINT", raising=False)
 
     app = create_app()
-    client = TestClient(app)
-
-    r = client.get("/healthz")
-    assert r.status_code == 200
+    with TestClient(app) as client:
+        r = client.get("/healthz")
+        assert r.status_code == 200
 
 
 def test_app_starts_when_langsmith_disabled(monkeypatch):
@@ -33,7 +32,6 @@ def test_app_starts_when_langsmith_disabled(monkeypatch):
     monkeypatch.setenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
 
     app = create_app()
-    client = TestClient(app)
-
-    r = client.get("/healthz")
-    assert r.status_code == 200
+    with TestClient(app) as client:
+        r = client.get("/healthz")
+        assert r.status_code == 200
