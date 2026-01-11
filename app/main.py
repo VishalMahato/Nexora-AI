@@ -12,6 +12,7 @@ from api.v1.run_execution import router as run_execution_router
 from api.v1.run_approval import router as run_approval_router
 from api.v1.run_execute import router as run_execute_router
 from api.v1.run_confirmations import router as run_confirmations_router
+from api.v1.chat import router as chat_router
 
 
 
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     v1_router.include_router(run_approval_router) 
     v1_router.include_router(run_execute_router)
     v1_router.include_router(run_confirmations_router)
+    v1_router.include_router(chat_router)
 
     app.include_router(v1_router)
 
