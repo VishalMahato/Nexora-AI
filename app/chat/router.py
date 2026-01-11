@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from web3 import Web3
+from sqlalchemy.orm import Session
 
 from app.chat.contracts import ChatRouteRequest, ChatRouteResponse, IntentClassification, IntentMode
 from app.chat.llm import classify_intent
+from app.chat.runs_client import create_run_from_action, start_run_for_action
 from app.chat.tools import get_allowlists, get_token_balance, get_wallet_snapshot
 
 
@@ -31,7 +33,42 @@ def _requires_wallet_chain(intent_type: str) -> bool:
     return intent_type in {"BALANCE", "SNAPSHOT", "WALLET_SNAPSHOT", "ALLOWANCES"}
 
 
-def route_chat(req: ChatRouteRequest) -> ChatRouteResponse:
+def _resolve_wallet_chain(req: ChatRouteRequest, classification: IntentClassification) -> tuple[str | None, int | None]:
+    wallet = req.wallet_address
+    chain_id = req.chain_id
+    slots = classification.slots or {}
+    if not wallet:
+        wallet = slots.get("wallet_address")
+    if not chain_id:
+        chain_id = slots.get("chain_id")
+    if isinstance(chain_id, str) and chain_id.isdigit():
+        chain_id = int(chain_id)
+    return wallet, chain_id
+
+
+def _missing_action_slots(classification: IntentClassification) -> list[str]:
+    missing = list(classification.missing_slots or [])
+    intent = (classification.intent_type or "").upper()
+    slots = classification.slots or {}
+    if intent == "SWAP":
+        if "token_in" not in slots:
+            missing.append("token_in")
+        if "token_out" not in slots:
+            missing.append("token_out")
+        if "amount_in" not in slots:
+            missing.append("amount_in")
+    return list(dict.fromkeys(missing))
+
+
+def _action_message_for_status(status: str | None) -> str:
+    if status == "BLOCKED":
+        return "I can't proceed: you don't have enough USDC. Try a smaller amount or use a wallet with USDC."
+    if status == "FAILED":
+        return "I can't proceed: the run failed. Review the timeline for details."
+    return "Got it - I generated a safe transaction plan. Review and approve."
+
+
+def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
     context = {
         "conversation_id": req.conversation_id,
         "wallet_address": req.wallet_address,
@@ -101,10 +138,44 @@ def route_chat(req: ChatRouteRequest) -> ChatRouteResponse:
         )
 
     if classification.mode == IntentMode.ACTION:
+        wallet_address, chain_id = _resolve_wallet_chain(req, classification)
+        missing = _missing_action_slots(classification)
+        if not wallet_address or not Web3.is_address(wallet_address):
+            missing.append("wallet_address")
+        if not chain_id:
+            missing.append("chain_id")
+        if missing:
+            clarify_classification = IntentClassification(
+                mode=IntentMode.CLARIFY,
+                intent_type=classification.intent_type,
+                confidence=classification.confidence,
+                slots=classification.slots,
+                missing_slots=missing,
+                reason="missing_required_slots",
+            )
+            return ChatRouteResponse(
+                mode=IntentMode.CLARIFY,
+                assistant_message="I need a bit more detail to proceed.",
+                questions=_questions_for_missing_slots(missing),
+                classification=clarify_classification,
+            )
+
+        run_id = create_run_from_action(
+            db=db,
+            intent=req.message,
+            wallet_address=wallet_address,
+            chain_id=int(chain_id),
+        )
+        run_result = start_run_for_action(db=db, run_id=run_id)
+        run_status = run_result.get("status")
+        fetch_url = f"/v1/runs/{run_id}?includeArtifacts=true"
+
         return ChatRouteResponse(
             mode=IntentMode.ACTION,
-            assistant_message="Got it - preparing that action.",
+            assistant_message=_action_message_for_status(run_status),
             questions=[],
+            run_id=str(run_id),
+            run_ref={"id": str(run_id), "status": run_status, "fetch_url": fetch_url},
             classification=classification,
         )
 
