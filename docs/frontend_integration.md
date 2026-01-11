@@ -60,9 +60,15 @@ Key artifacts you can render:
 - `artifacts.security_result` (AgentResult)
 - `artifacts.judge_result` (AgentResult)
 - `artifacts.tx_plan`
+- `artifacts.tx_requests` (compiled txs for FE signing)
+- `artifacts.quote` (swap quote summary, if applicable)
 - `artifacts.simulation`
 - `artifacts.policy_result`
 - `artifacts.decision`
+
+Note: `planner_result.output.tx_plan.candidates` may be empty. The compiler fills
+`artifacts.tx_requests` (and compiled candidates in `artifacts.tx_plan`) later.
+For execution, always use `artifacts.tx_requests`.
 
 ## 3) Approve or reject
 
@@ -220,6 +226,33 @@ Each tool call includes `tool_name`, `request`, `response`, and timestamps.
   "issues": [
     { "code": "string", "severity": "LOW|MED|HIGH", "message": "string", "data": {} }
   ]
+}
+```
+
+## TxRequest schema (artifacts.tx_requests[])
+
+```json
+{
+  "txRequestId": "approve-1|swap-1",
+  "chainId": 1,
+  "to": "0x...",
+  "data": "0x...",
+  "valueWei": "0",
+  "meta": {
+    "kind": "APPROVE|SWAP",
+    "token": "USDC",
+    "spender": "UNISWAP_V2_ROUTER",
+    "amount": "20",
+    "amountBaseUnits": "20000000",
+    "tokenIn": "USDC",
+    "tokenOut": "ETH",
+    "amountIn": "20",
+    "amountInBaseUnits": "20000000",
+    "minOut": "12345",
+    "slippageBps": 50,
+    "deadlineSeconds": 1200,
+    "routerKey": "UNISWAP_V2_ROUTER"
+  }
 }
 ```
 

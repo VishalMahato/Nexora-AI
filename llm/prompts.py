@@ -10,6 +10,11 @@ SYSTEM_PROMPT = (
     "Schema requirements: "
     "plan_version (int, use 1), type ('noop' or 'plan'), reason (string or null), "
     "normalized_intent (string), actions (list), candidates (list). "
+    "Action schemas: "
+    "TRANSFER: {action:'TRANSFER', amount, to, chain_id, meta:{asset}}. "
+    "APPROVE: {action:'APPROVE', token (symbol), spender (router key), amount}. "
+    "SWAP: {action:'SWAP', token_in (symbol), token_out (symbol), amount_in, slippage_bps, "
+    "recipient, router_key, deadline_seconds}. "
     "Each candidate requires: chain_id (int), to (0x address), data (0x hex), "
     "valueWei (string). "
     "Respect allowlists and defaults. If unsure, return a noop plan with a reason."
@@ -23,6 +28,11 @@ REPAIR_PLAN_SYSTEM_PROMPT = (
     "Schema requirements: "
     "plan_version (int, use 1), type ('noop' or 'plan'), reason (string or null), "
     "normalized_intent (string), actions (list), candidates (list). "
+    "Action schemas: "
+    "TRANSFER: {action:'TRANSFER', amount, to, chain_id, meta:{asset}}. "
+    "APPROVE: {action:'APPROVE', token (symbol), spender (router key), amount}. "
+    "SWAP: {action:'SWAP', token_in (symbol), token_out (symbol), amount_in, slippage_bps, "
+    "recipient, router_key, deadline_seconds}. "
     "Each candidate requires: chain_id (int), to (0x address), data (0x hex), "
     "valueWei (string). "
     "If you cannot safely fix the plan, return a noop plan with a reason."
@@ -77,6 +87,30 @@ def build_plan_tx_prompt(planner_input: Dict[str, Any]) -> Dict[str, str]:
                     "meta": {"asset": "ETH"},
                 }
             ],
+        },
+        {
+            "plan_version": 1,
+            "type": "plan",
+            "normalized_intent": "swap 20 usdc to eth",
+            "actions": [
+                {
+                    "action": "APPROVE",
+                    "token": "USDC",
+                    "spender": "UNISWAP_V2_ROUTER",
+                    "amount": "20",
+                },
+                {
+                    "action": "SWAP",
+                    "token_in": "USDC",
+                    "token_out": "ETH",
+                    "amount_in": "20",
+                    "slippage_bps": 50,
+                    "recipient": "0x1111111111111111111111111111111111111111",
+                    "router_key": "UNISWAP_V2_ROUTER",
+                    "deadline_seconds": 1200,
+                },
+            ],
+            "candidates": [],
         },
     ]
     user = (

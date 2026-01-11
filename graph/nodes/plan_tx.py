@@ -153,9 +153,13 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
     wallet_snapshot: Dict[str, Any] = state.artifacts.get("wallet_snapshot") or {}
     chain_id = getattr(state, "chain_id", None)
 
-    allowlisted_tokens = getattr(settings, "allowlisted_tokens", {}) or {}
-    allowlisted_routers = getattr(settings, "allowlisted_routers", {}) or {}
-    defaults = getattr(settings, "defaults", {}) or {}
+    allowlisted_tokens = settings.allowlisted_tokens_for_chain(chain_id)
+    allowlisted_routers = settings.allowlisted_routers_for_chain(chain_id)
+    defaults = {
+        "slippage_bps": settings.default_slippage_bps,
+        "deadline_seconds": settings.default_deadline_seconds,
+        "dex_kind": settings.dex_kind,
+    }
 
     router_addresses: List[str] = []
     for _, rv in allowlisted_routers.items():

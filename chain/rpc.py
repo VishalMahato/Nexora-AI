@@ -172,6 +172,17 @@ def get_fee_quote(chain_id: int) -> dict[str, Any]:
         raise Web3RPCError(f"get_fee_quote failed: {e}") from e
 
 
+def get_block_number(chain_id: int) -> int:
+    """
+    Return the latest block number.
+    """
+    w3 = _get_web3(chain_id)
+    try:
+        return int(w3.eth.block_number)
+    except Exception as e:
+        raise Web3RPCError(f"get_block_number failed: {e}") from e
+
+
 def get_transaction_receipt(chain_id: int, tx_hash: str) -> Any | None:
     """
     Fetch a transaction receipt or return None if not found yet.
