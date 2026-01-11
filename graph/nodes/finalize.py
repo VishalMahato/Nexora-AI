@@ -17,9 +17,13 @@ def finalize(state: RunState, config: RunnableConfig) -> RunState:
             agent="judge",
             step_name="JUDGE_AGENT",
             status="WARN",
-            output={"verdict": "NOT_IMPLEMENTED"},
+            output={
+                "verdict": "NEEDS_REWORK",
+                "reasoning_summary": "Judge result missing; manual review required.",
+                "issues": [],
+            },
             explanation=Explanation(
-                summary="Judge agent not implemented yet (F21).",
+                summary="Judge result missing; manual review required.",
                 assumptions=[],
                 why_safe=[],
                 risks=[],

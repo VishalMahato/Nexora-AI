@@ -319,6 +319,7 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
             },
             agent="LangGraph",
         )
+        return state
 
     except Exception as e:
         log_step(

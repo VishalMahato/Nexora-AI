@@ -24,6 +24,16 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
+def _resolve_final_status(artifacts: dict) -> RunStatus:
+    judge_result = artifacts.get("judge_result") or {}
+    verdict = (judge_result.get("output") or {}).get("verdict")
+    decision = artifacts.get("decision") or {}
+    action = decision.get("action")
+
+    if verdict == "BLOCK" or action == "BLOCK":
+        return RunStatus.BLOCKED
+    return RunStatus.AWAITING_APPROVAL
+
 
 @router.post("/{run_id}/start")
 def start_run(run_id: UUID, db: Session = Depends(get_db)):
@@ -81,14 +91,7 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
             else final_state.get("artifacts", {})
         )
 
-        # decide final status from policy decision 
-        decision = artifacts.get("decision") or {}
-        action = decision.get("action")
-
-        if action == "BLOCK":
-            final_status = RunStatus.BLOCKED
-        else:
-            final_status = RunStatus.AWAITING_APPROVAL
+        final_status = _resolve_final_status(artifacts)
 
         finalize_run(
             db,

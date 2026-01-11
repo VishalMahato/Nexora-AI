@@ -41,6 +41,7 @@ class RunResponse(BaseModel):
     status: str
     error_code: str | None = None
     error_message: str | None = None
+    artifacts: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
 

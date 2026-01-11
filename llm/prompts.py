@@ -15,6 +15,14 @@ SYSTEM_PROMPT = (
     "Respect allowlists and defaults. If unsure, return a noop plan with a reason."
 )
 
+JUDGE_SYSTEM_PROMPT = (
+    "You are Nexora judge. Review the inputs and return ONLY valid JSON that matches the JudgeOutput schema. "
+    "No markdown or extra text. "
+    "Schema requirements: verdict ('PASS'|'NEEDS_REWORK'|'BLOCK'), reasoning_summary (short string), "
+    "issues (list of {code, severity ('LOW'|'MED'|'HIGH'), message, data}). "
+    "Do not include chain-of-thought."
+)
+
 
 def build_plan_tx_prompt(planner_input: Dict[str, Any]) -> Dict[str, str]:
     user_payload = {
@@ -65,3 +73,32 @@ def build_plan_tx_prompt(planner_input: Dict[str, Any]) -> Dict[str, str]:
         f"Input: {json.dumps(user_payload, ensure_ascii=True)}"
     )
     return {"system": SYSTEM_PROMPT, "user": user}
+
+
+def build_judge_prompt(judge_input: Dict[str, Any]) -> Dict[str, str]:
+    examples = [
+        {
+            "verdict": "PASS",
+            "reasoning_summary": "Plan, simulation, and policy checks are consistent.",
+            "issues": [],
+        },
+        {
+            "verdict": "NEEDS_REWORK",
+            "reasoning_summary": "Simulation failed for one candidate; review required.",
+            "issues": [
+                {
+                    "code": "SIMULATION_FAILED",
+                    "severity": "HIGH",
+                    "message": "Simulation failed for candidate 0.",
+                    "data": {"index": 0},
+                }
+            ],
+        },
+    ]
+    user = (
+        "Evaluate the plan, simulation, and policy artifacts for consistency and safety. "
+        "Return ONLY JSON that matches the schema.\n"
+        f"Examples: {json.dumps(examples, ensure_ascii=True)}\n"
+        f"Input: {json.dumps(judge_input, ensure_ascii=True)}"
+    )
+    return {"system": JUDGE_SYSTEM_PROMPT, "user": user}

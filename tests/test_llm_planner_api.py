@@ -67,9 +67,15 @@ def test_llm_plan_success_logged_and_used(client, monkeypatch):
             }
         ],
     }
+    judge_output = {
+        "verdict": "PASS",
+        "reasoning_summary": "Plan and simulation are consistent.",
+        "issues": [],
+    }
 
     with (
         patch("llm.client.LLMClient.plan_tx", return_value=llm_plan),
+        patch("llm.client.LLMClient.judge", return_value=judge_output),
         patch("chain.client.ChainClient.wallet_snapshot", return_value=_fake_snapshot()),
         patch("chain.client.ChainClient.estimate_gas", return_value=21000),
         patch("chain.client.ChainClient.get_fee_quote", return_value={"gasPrice": "100"}),
@@ -95,9 +101,15 @@ def test_llm_invalid_plan_falls_back_to_stub(client, monkeypatch):
     get_settings.cache_clear()
 
     run_id = _create_run(client, intent="swap 1 eth to usdc")
+    judge_output = {
+        "verdict": "PASS",
+        "reasoning_summary": "No issues detected.",
+        "issues": [],
+    }
 
     with (
         patch("llm.client.LLMClient.plan_tx", return_value={"type": "plan", "actions": []}),
+        patch("llm.client.LLMClient.judge", return_value=judge_output),
         patch("chain.client.ChainClient.wallet_snapshot", return_value=_fake_snapshot()),
     ):
         s = client.post(f"/v1/runs/{run_id}/start")
@@ -142,9 +154,15 @@ def test_llm_plan_non_allowlisted_is_blocked(client, monkeypatch):
             }
         ],
     }
+    judge_output = {
+        "verdict": "PASS",
+        "reasoning_summary": "Plan is ready.",
+        "issues": [],
+    }
 
     with (
         patch("llm.client.LLMClient.plan_tx", return_value=llm_plan),
+        patch("llm.client.LLMClient.judge", return_value=judge_output),
         patch("chain.client.ChainClient.wallet_snapshot", return_value=_fake_snapshot()),
         patch("chain.client.ChainClient.estimate_gas", return_value=21000),
         patch("chain.client.ChainClient.get_fee_quote", return_value={"gasPrice": "100"}),
