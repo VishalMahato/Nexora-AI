@@ -207,17 +207,25 @@ class ChainClient:
         tx: dict[str, Any],
     ) -> str:
         tx_norm = self._normalize_tx_dict(tx)
-        result = run_tool(
+
+        def _call_and_serialize() -> str:
+            raw = rpc.eth_call(chain_id, tx_norm)
+            if isinstance(raw, (bytes, bytearray)):
+                return "0x" + raw.hex()
+            if hasattr(raw, "hex") and callable(raw.hex):
+                hex_value = raw.hex()
+                if isinstance(hex_value, str):
+                    return hex_value if hex_value.startswith("0x") else "0x" + hex_value
+            return str(raw)
+
+        return run_tool(
             db,
             run_id=run_id,
             step_id=step_id,
             tool_name="rpc.eth_call",
             request={"chainId": chain_id, "tx": tx},
-            fn=lambda: rpc.eth_call(chain_id, tx_norm),
+            fn=_call_and_serialize,
         )
-        if isinstance(result, (bytes, bytearray)):
-            return "0x" + result.hex()
-        return str(result)
 
     def estimate_gas(
         self,
@@ -255,6 +263,23 @@ class ChainClient:
             fn=lambda: rpc.get_fee_quote(chain_id),
         )
         return {k: str(v) for k, v in fee_quote.items()}
+
+    def get_block_number(
+        self,
+        *,
+        db: Session,
+        run_id,
+        step_id,
+        chain_id: int,
+    ) -> int:
+        return run_tool(
+            db,
+            run_id=run_id,
+            step_id=step_id,
+            tool_name="rpc.block_number",
+            request={"chainId": chain_id},
+            fn=lambda: int(rpc.get_block_number(chain_id)),
+        )
 
     def _serialize_receipt_value(self, value: Any) -> Any:
         if isinstance(value, (bytes, bytearray)):

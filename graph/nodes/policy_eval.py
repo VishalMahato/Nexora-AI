@@ -25,6 +25,10 @@ def policy_eval(state: RunState, config: RunnableConfig) -> RunState:
     policy_result, decision = policy_engine.evaluate_policies(
         state.artifacts,
         allowlisted_to=settings.allowlisted_to_set(),
+        allowlisted_tokens=settings.allowlisted_tokens_for_chain(state.chain_id),
+        allowlisted_routers=settings.allowlisted_routers_for_chain(state.chain_id),
+        min_slippage_bps=settings.min_slippage_bps,
+        max_slippage_bps=settings.max_slippage_bps,
     )
 
     state.artifacts["policy_result"] = policy_result.model_dump()

@@ -32,7 +32,15 @@ def _create_and_start_run(client, *, monkeypatch=None, monkeypatch_block: bool =
 
         from policy.types import Decision, DecisionAction, PolicyResult, Severity
 
-        def fake_eval(artifacts, *, allowlisted_to=None):
+        def fake_eval(
+            artifacts,
+            *,
+            allowlisted_to=None,
+            allowlisted_tokens=None,
+            allowlisted_routers=None,
+            min_slippage_bps=10,
+            max_slippage_bps=200,
+        ):
             return (
                 PolicyResult(checks=[]),
                 Decision(

@@ -79,9 +79,13 @@ def repair_plan_tx(state: RunState, config: RunnableConfig) -> RunState:
     repair_input = _build_repair_input(state)
     repair_input.update(
         {
-            "allowlisted_tokens": getattr(settings, "allowlisted_tokens", {}) or {},
-            "allowlisted_routers": getattr(settings, "allowlisted_routers", {}) or {},
-            "defaults": getattr(settings, "defaults", {}) or {},
+            "allowlisted_tokens": settings.allowlisted_tokens_for_chain(state.chain_id),
+            "allowlisted_routers": settings.allowlisted_routers_for_chain(state.chain_id),
+            "defaults": {
+                "slippage_bps": settings.default_slippage_bps,
+                "deadline_seconds": settings.default_deadline_seconds,
+                "dex_kind": settings.dex_kind,
+            },
         }
     )
 

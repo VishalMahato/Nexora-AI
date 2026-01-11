@@ -25,23 +25,25 @@ class TxAction(BaseModel):
     token: str | None = None
     spender: str | None = None
     amount: str | None = None
+    token_in: str | None = None
+    token_out: str | None = None
+    amount_in: str | None = None
+    slippage_bps: int | None = Field(default=None, ge=0, le=10_000)
+    deadline_seconds: int | None = Field(default=None, ge=0)
+    recipient: str | None = None
+    router_key: str | None = None
     to: str | None = None
     chain_id: int | None = None
     meta: dict[str, Any] | None = None
 
-    @field_validator("token")
-    @classmethod
-    def _validate_token(cls, value: str | None) -> str | None:
-        return _validate_address(value)
-
-    @field_validator("spender")
-    @classmethod
-    def _validate_spender(cls, value: str | None) -> str | None:
-        return _validate_address(value)
-
     @field_validator("to")
     @classmethod
     def _validate_to(cls, value: str | None) -> str | None:
+        return _validate_address(value)
+
+    @field_validator("recipient")
+    @classmethod
+    def _validate_recipient(cls, value: str | None) -> str | None:
         return _validate_address(value)
 
 
