@@ -58,7 +58,7 @@ Key artifacts you can render:
 - `artifacts.timeline[]` (UI-friendly entries)
 - `artifacts.planner_result` (AgentResult)
 - `artifacts.security_result` (AgentResult)
-- `artifacts.judge_result` (AgentResult placeholder until F21)
+- `artifacts.judge_result` (AgentResult)
 - `artifacts.tx_plan`
 - `artifacts.simulation`
 - `artifacts.policy_result`
@@ -155,7 +155,7 @@ Response (mined):
 
 ## 7) Fetch run status
 
-GET `/v1/runs/{runId}`
+GET `/v1/runs/{runId}` or `GET /v1/runs/{runId}/status`
 
 Response:
 
@@ -175,6 +175,13 @@ Response:
 }
 ```
 
+Optional: include artifacts
+
+- Query: `GET /v1/runs/{runId}?includeArtifacts=true`
+- Alias: `GET /v1/runs/{runId}/details` (always includes artifacts)
+
+Response includes `run.artifacts`.
+
 ## 8) Tool call logs (optional, for debug)
 
 GET `/v1/runs/{runId}/tool-calls`
@@ -186,7 +193,7 @@ Each tool call includes `tool_name`, `request`, `response`, and timestamps.
 ```json
 {
   "agent": "PLANNER|SECURITY|JUDGE",
-  "step_name": "PLAN_TX|SECURITY_EVAL|FINALIZE",
+  "step_name": "PLAN_TX|SECURITY_EVAL|JUDGE_AGENT|FINALIZE",
   "version": 1,
   "status": "OK|WARN|BLOCK|ERROR",
   "output": {},
@@ -201,6 +208,18 @@ Each tool call includes `tool_name`, `request`, `response`, and timestamps.
   "sources": [],
   "errors": [],
   "created_at": "ISO-8601"
+}
+```
+
+## Judge output schema (artifacts.judge_result.output)
+
+```json
+{
+  "verdict": "PASS|NEEDS_REWORK|BLOCK",
+  "reasoning_summary": "string",
+  "issues": [
+    { "code": "string", "severity": "LOW|MED|HIGH", "message": "string", "data": {} }
+  ]
 }
 ```
 

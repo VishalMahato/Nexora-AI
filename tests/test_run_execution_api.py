@@ -81,6 +81,7 @@ def test_start_run_transitions_and_logs_steps(client):
         assert "SIMULATE_TXS" in step_names
         assert "POLICY_EVAL" in step_names   # --- NEW ---
         assert "SECURITY_EVAL" in step_names
+        assert "JUDGE_AGENT" in step_names
         assert "FINALIZE" in step_names
     finally:
         db.close()
@@ -310,3 +311,35 @@ def test_start_run_native_transfer_rejects_scientific_notation(client, monkeypat
 
         artifacts = s.json()["artifacts"]
         assert artifacts["tx_plan"]["type"] == "noop"
+
+
+def test_start_run_judge_verdict_mapping(client, monkeypatch):
+    payload = {
+        "intent": "Judge mapping test",
+        "walletAddress": VALID_WALLET,
+        "chainId": 1,
+    }
+    verdict_cases = [
+        ("PASS", RunStatus.AWAITING_APPROVAL.value),
+        ("NEEDS_REWORK", RunStatus.AWAITING_APPROVAL.value),
+        ("BLOCK", RunStatus.BLOCKED.value),
+    ]
+
+    for verdict, expected in verdict_cases:
+        r = client.post("/v1/runs", json=payload)
+        assert r.status_code == 200
+        run_id = r.json()["runId"]
+
+        artifacts = {
+            "decision": {"action": "NEEDS_APPROVAL"},
+            "judge_result": {"output": {"verdict": verdict}},
+        }
+
+        def fake_run_graph(_db, _state, *, _artifacts=artifacts):
+            return {"artifacts": _artifacts}
+
+        monkeypatch.setattr("api.v1.run_execution.run_graph", fake_run_graph)
+
+        s = client.post(f"/v1/runs/{run_id}/start")
+        assert s.status_code == 200, s.text
+        assert s.json()["status"] == expected

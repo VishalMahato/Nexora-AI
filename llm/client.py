@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Any, Dict
 
-from llm.prompts import build_plan_tx_prompt
+from llm.prompts import build_plan_tx_prompt, build_judge_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,11 @@ class LLMClient:
 
     def plan_tx(self, *, planner_input: dict) -> dict:
         prompt = build_plan_tx_prompt(planner_input)
+        raw_text = self._call_provider(prompt=prompt)
+        return self._parse_json(raw_text)
+
+    def judge(self, *, judge_input: dict) -> dict:
+        prompt = build_judge_prompt(judge_input)
         raw_text = self._call_provider(prompt=prompt)
         return self._parse_json(raw_text)
 

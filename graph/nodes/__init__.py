@@ -5,6 +5,7 @@ from graph.nodes.build_txs import build_txs
 from graph.nodes.simulate_txs import simulate_txs
 from graph.nodes.policy_eval import policy_eval
 from graph.nodes.security_eval import security_eval
+from graph.nodes.judge_agent import judge_agent
 from graph.nodes.finalize import finalize
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "simulate_txs",
     "policy_eval",
     "security_eval",
+    "judge_agent",
     "finalize",
 ]
