@@ -29,6 +29,17 @@ def build_intent_classifier_prompt(message: str, context: Dict[str, Any]) -> Dic
                 },
             },
             {
+                "input": "what are the supported tokens?",
+                "output": {
+                    "mode": "QUERY",
+                    "intent_type": "ALLOWLISTS",
+                    "confidence": 0.8,
+                    "slots": {},
+                    "missing_slots": [],
+                    "reason": "config query",
+                },
+            },
+            {
                 "input": "swap usdc to weth",
                 "output": {
                     "mode": "CLARIFY",
@@ -37,6 +48,17 @@ def build_intent_classifier_prompt(message: str, context: Dict[str, Any]) -> Dic
                     "slots": {"token_in": "USDC", "token_out": "WETH"},
                     "missing_slots": ["amount_in"],
                     "reason": "amount missing",
+                },
+            },
+            {
+                "input": "what is my usdc balance?",
+                "output": {
+                    "mode": "QUERY",
+                    "intent_type": "BALANCE",
+                    "confidence": 0.9,
+                    "slots": {"token_symbol": "USDC"},
+                    "missing_slots": [],
+                    "reason": "token balance",
                 },
             },
             {
