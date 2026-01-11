@@ -82,6 +82,7 @@ def test_start_run_transitions_and_logs_steps(client):
         assert "POLICY_EVAL" in step_names   # --- NEW ---
         assert "SECURITY_EVAL" in step_names
         assert "JUDGE_AGENT" in step_names
+        assert "REPAIR_ROUTER" in step_names
         assert "FINALIZE" in step_names
     finally:
         db.close()

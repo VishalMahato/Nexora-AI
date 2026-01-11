@@ -70,7 +70,9 @@ def security_eval(state: RunState, config: RunnableConfig) -> RunState:
     ).to_public_dict()
 
     put_artifact(state, "security_result", security_result)
-    append_timeline_event(state, agent_result_to_timeline(security_result))
+    security_event = agent_result_to_timeline(security_result)
+    security_event["attempt"] = state.attempt
+    append_timeline_event(state, security_event)
 
     log_step(
         db,

@@ -234,7 +234,9 @@ def judge_agent(state: RunState, config: RunnableConfig) -> RunState:
     ).to_public_dict()
 
     put_artifact(state, "judge_result", judge_result)
-    append_timeline_event(state, agent_result_to_timeline(judge_result))
+    judge_event = agent_result_to_timeline(judge_result)
+    judge_event["attempt"] = state.attempt
+    append_timeline_event(state, judge_event)
 
     log_step(
         db,

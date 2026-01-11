@@ -303,7 +303,9 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
         ).to_public_dict()
 
         put_artifact(state, "planner_result", planner_result)
-        append_timeline_event(state, agent_result_to_timeline(planner_result))
+        planner_event = agent_result_to_timeline(planner_result)
+        planner_event["attempt"] = state.attempt
+        append_timeline_event(state, planner_event)
 
         log_step(
             db,

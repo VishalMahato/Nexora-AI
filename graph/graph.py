@@ -16,6 +16,8 @@ from graph.nodes import (
     policy_eval,
     security_eval,
     judge_agent,
+    repair_router,
+    repair_plan_tx,
     finalize,
 )
 
@@ -23,7 +25,8 @@ from graph.nodes import (
 def build_graph() -> StateGraph:
     """
     INPUT_NORMALIZE -> WALLET_SNAPSHOT -> PLAN_TX -> BUILD_TXS
-    -> SIMULATE_TXS -> POLICY_EVAL -> SECURITY_EVAL -> JUDGE_AGENT -> FINALIZE -> END
+    -> SIMULATE_TXS -> POLICY_EVAL -> SECURITY_EVAL -> JUDGE_AGENT -> REPAIR_ROUTER
+    -> (REPAIR_PLAN_TX -> BUILD_TXS -> SIMULATE_TXS -> POLICY_EVAL -> SECURITY_EVAL -> JUDGE_AGENT) -> FINALIZE -> END
     """
     graph = StateGraph(RunState)
 
@@ -35,6 +38,8 @@ def build_graph() -> StateGraph:
     graph.add_node("POLICY_EVAL", policy_eval)
     graph.add_node("SECURITY_EVAL", security_eval)
     graph.add_node("JUDGE_AGENT", judge_agent)
+    graph.add_node("REPAIR_ROUTER", repair_router)
+    graph.add_node("REPAIR_PLAN_TX", repair_plan_tx)
     graph.add_node("FINALIZE", finalize)
 
     graph.set_entry_point("INPUT_NORMALIZE")
@@ -49,7 +54,21 @@ def build_graph() -> StateGraph:
     graph.add_edge("SIMULATE_TXS", "POLICY_EVAL")
     graph.add_edge("POLICY_EVAL", "SECURITY_EVAL")
     graph.add_edge("SECURITY_EVAL", "JUDGE_AGENT")
-    graph.add_edge("JUDGE_AGENT", "FINALIZE")
+    graph.add_edge("JUDGE_AGENT", "REPAIR_ROUTER")
+
+    def route_repair(state: RunState) -> str:
+        return state.artifacts.get("repair_next_step", "FINALIZE")
+
+    graph.add_conditional_edges(
+        "REPAIR_ROUTER",
+        route_repair,
+        {
+            "REPAIR_PLAN_TX": "REPAIR_PLAN_TX",
+            "FINALIZE": "FINALIZE",
+        },
+    )
+
+    graph.add_edge("REPAIR_PLAN_TX", "BUILD_TXS")
     graph.add_edge("FINALIZE", END)
 
     return graph

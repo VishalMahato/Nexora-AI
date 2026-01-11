@@ -6,6 +6,8 @@ from graph.nodes.simulate_txs import simulate_txs
 from graph.nodes.policy_eval import policy_eval
 from graph.nodes.security_eval import security_eval
 from graph.nodes.judge_agent import judge_agent
+from graph.nodes.repair_router import repair_router
+from graph.nodes.repair_plan_tx import repair_plan_tx
 from graph.nodes.finalize import finalize
 
 __all__ = [
@@ -18,5 +20,7 @@ __all__ = [
     "policy_eval",
     "security_eval",
     "judge_agent",
+    "repair_router",
+    "repair_plan_tx",
     "finalize",
 ]
