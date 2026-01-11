@@ -81,6 +81,8 @@ Response includes:
 - `run_id` / `run_ref` when ACTION triggers a run
 
 Frontend should map UI state from `run_ref.status` (or fetch the run status).
+If present, `next_ui` may include `SHOW_APPROVAL_SCREEN` when a run is ready
+for approval.
 
 ## 3) Approve or reject
 

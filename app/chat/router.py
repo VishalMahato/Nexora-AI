@@ -169,6 +169,7 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
         run_result = start_run_for_action(db=db, run_id=run_id)
         run_status = run_result.get("status")
         fetch_url = f"/v1/runs/{run_id}?includeArtifacts=true"
+        next_ui = "SHOW_APPROVAL_SCREEN" if run_status == "AWAITING_APPROVAL" else None
 
         return ChatRouteResponse(
             mode=IntentMode.ACTION,
@@ -176,6 +177,7 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
             questions=[],
             run_id=str(run_id),
             run_ref={"id": str(run_id), "status": run_status, "fetch_url": fetch_url},
+            next_ui=next_ui,
             classification=classification,
         )
 

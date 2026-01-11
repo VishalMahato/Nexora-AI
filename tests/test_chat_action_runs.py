@@ -38,6 +38,7 @@ def test_chat_action_creates_and_starts_run(client):
     assert body["mode"] == IntentMode.ACTION.value
     assert body["run_id"] == str(run_id)
     assert body["run_ref"]["status"] == "AWAITING_APPROVAL"
+    assert body["next_ui"] == "SHOW_APPROVAL_SCREEN"
     create_run.assert_called_once()
     start_run.assert_called_once()
 
