@@ -30,6 +30,6 @@ class JudgeIssue(BaseModel):
 class JudgeOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    verdict: JudgeVerdict
+    verdict: JudgeVerdict  
     reasoning_summary: str
     issues: List[JudgeIssue] = Field(default_factory=list)

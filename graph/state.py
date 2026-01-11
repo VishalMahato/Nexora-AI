@@ -25,6 +25,8 @@ class RunState(BaseModel):
     status: RunStatus
     chain_id: int | None = None
     wallet_address: str | None = None
+    attempt: int = Field(default=1, ge=1)
+    max_attempts: int = Field(default=2, ge=1)
 
     # Free-form container for node outputs / intermediate artifacts
     artifacts: Dict[str, Any] = Field(default_factory=dict)
