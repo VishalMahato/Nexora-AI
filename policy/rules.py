@@ -24,6 +24,13 @@ def _get_tx_candidates(artifacts: Dict[str, Any]) -> List[Dict[str, Any]]:
     return []
 
 
+def _get_tx_requests(artifacts: Dict[str, Any]) -> List[Dict[str, Any]]:
+    tx_requests = artifacts.get("tx_requests") or []
+    if isinstance(tx_requests, list):
+        return [r for r in tx_requests if isinstance(r, dict)]
+    return []
+
+
 def rule_allowlist_targets(
     artifacts: Dict[str, Any],
     allowlisted_to: Set[str],
@@ -71,9 +78,10 @@ def rule_simulation_success(
     artifacts: Dict[str, Any],
 ) -> PolicyCheckResult:
     txs = _get_tx_candidates(artifacts)
+    tx_requests = _get_tx_requests(artifacts)
     simulation = artifacts.get("simulation") or {}
 
-    if not txs:
+    if not txs and not tx_requests:
         return PolicyCheckResult(
             id="simulation_success",
             title="Simulation: must succeed",
@@ -107,6 +115,21 @@ def rule_simulation_success(
                     metadata={
                         "num_failed": len(failures),
                         "errors": errors[:3],
+                    },
+                )
+            assumed = [r for r in results if r.get("assumed_success") is True]
+            if assumed:
+                assumed_ids = [
+                    r.get("txRequestId") for r in assumed if r.get("txRequestId")
+                ]
+                return PolicyCheckResult(
+                    id="simulation_success",
+                    title="Simulation: must succeed",
+                    status=CheckStatus.WARN,
+                    reason="Simulation assumed success for one or more transactions.",
+                    metadata={
+                        "assumed_count": len(assumed),
+                        "assumed_tx_request_ids": assumed_ids[:3],
                     },
                 )
             if results:
@@ -188,13 +211,6 @@ def rule_required_artifacts_present(artifacts: Dict[str, Any]) -> PolicyCheckRes
         status=CheckStatus.PASS,
         reason="All required artifacts are present.",
     )
-
-
-def _get_tx_requests(artifacts: Dict[str, Any]) -> List[Dict[str, Any]]:
-    tx_requests = artifacts.get("tx_requests") or []
-    if isinstance(tx_requests, list):
-        return [r for r in tx_requests if isinstance(r, dict)]
-    return []
 
 
 def rule_defi_allowlists(

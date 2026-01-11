@@ -1,5 +1,6 @@
 # app/main.py
 from fastapi import FastAPI, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.core.logging import configure_logging
 from app.core.langsmith import configure_langsmith
@@ -22,6 +23,13 @@ def create_app() -> FastAPI:
 
     # request-scoped run_id context
     app.add_middleware(RunContextMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.get("/healthz")
     async def healthz():
