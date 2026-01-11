@@ -8,7 +8,8 @@ from app.config import get_settings
 @pytest.fixture
 def client():
     app = create_app()
-    return TestClient(app)
+    with TestClient(app) as client:
+        yield client
 
 
 @pytest.fixture(autouse=True)

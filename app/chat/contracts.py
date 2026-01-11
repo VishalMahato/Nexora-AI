@@ -22,6 +22,17 @@ class ChatRouteRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class IntentClassification(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mode: IntentMode
+    intent_type: str | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    slots: dict[str, Any] = Field(default_factory=dict)
+    missing_slots: list[str] = Field(default_factory=list)
+    reason: str | None = None
+
+
 class ChatRouteResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -31,3 +42,4 @@ class ChatRouteResponse(BaseModel):
     run_id: str | None = None
     data: dict[str, Any] = Field(default_factory=dict)
     next_ui: str | None = None
+    classification: IntentClassification | None = None
