@@ -23,7 +23,7 @@ User -> Conversational UI -> Conversation Router (LLM)
    - Executes tx_requests via MetaMask.
 
 2) Conversation Router (LLM)
-   - Classifies intent: QUERY vs ACTION vs CLARIFY.
+   - Classifies intent: GENERAL vs QUERY vs ACTION vs CLARIFY.
    - Uses tools for read-only queries.
    - Creates runs only for actionable intents.
 
@@ -49,6 +49,8 @@ User -> Conversational UI -> Conversation Router (LLM)
 - Conversation router handles chat turns and tool queries.
 - Runs API is only for actionable intents (creates run_id).
 - Read-only tools never create runs.
+- At any time, exactly one ACTION intent may be active per conversation.
+- QUERY intents are non-blocking and can be answered while an ACTION is pending.
 
 ## Backend Architecture
 
@@ -125,3 +127,9 @@ Run status handling:
 - Sequential simulation uses guarded assumptions when allowances cannot be
   applied in stateless eth_call.
 - Stateful override simulation is deferred (F24b).
+
+## Product Roadmap (Intent Handling)
+
+- Multi-intent dialog management (threads, interrupt rules, disambiguation)
+  is deferred to a product-level release. Current chat routing supports a
+  single active intent with clarify follow-ups.

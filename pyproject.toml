@@ -15,6 +15,7 @@ dependencies = [
   "pydantic-settings>=2.10.1",
   "python-dotenv>=1.1.1",
   "sqlalchemy>=2.0.43",
+  "streamlit>=1.52.2",
   "uvicorn>=0.35.0",
   "web3>=7.14.0",
 ]

@@ -14,14 +14,24 @@ def test_chat_clarify_loop_amount_followup(client):
     with (
         patch(
             "app.chat.router.classify_intent",
-            return_value={
-                "mode": "CLARIFY",
-                "intent_type": "SWAP",
-                "confidence": 0.7,
-                "slots": {"token_in": "USDC", "token_out": "WETH"},
-                "missing_slots": ["amount_in"],
-                "reason": "amount missing",
-            },
+            side_effect=[
+                {
+                    "mode": "CLARIFY",
+                    "intent_type": "SWAP",
+                    "confidence": 0.7,
+                    "slots": {"token_in": "USDC", "token_out": "WETH"},
+                    "missing_slots": ["amount_in"],
+                    "reason": "amount missing",
+                },
+                {
+                    "mode": "ACTION",
+                    "intent_type": "SWAP",
+                    "confidence": 0.9,
+                    "slots": {"amount_in": "1"},
+                    "missing_slots": [],
+                    "reason": "slot filled",
+                },
+            ],
         ),
         patch("app.chat.router.create_run_from_action", return_value=run_id),
         patch("app.chat.router.start_run_for_action", return_value={"status": "AWAITING_APPROVAL"}),
@@ -118,3 +128,44 @@ def test_chat_state_store_ttl_expiry():
     )
 
     assert get_state("c-expired") is None
+
+
+def test_chat_pending_allows_query_without_clearing_state(client):
+    set_state(
+        "c-int",
+        {
+            "intent_type": "SWAP",
+            "intent_message": "swap usdc to weth",
+            "partial_slots": {"token_in": "USDC", "token_out": "WETH"},
+            "missing_slots": ["amount_in"],
+            "wallet_address": None,
+            "chain_id": None,
+        },
+        ttl_seconds=1200,
+    )
+
+    with (
+        patch(
+            "app.chat.router.classify_intent",
+            return_value={
+                "mode": "QUERY",
+                "intent_type": "ALLOWLISTS",
+                "confidence": 0.9,
+                "slots": {},
+                "missing_slots": [],
+                "reason": "allowlists query",
+            },
+        ),
+        patch("app.chat.router.get_allowlists", return_value={"tokens": {}, "routers": {}}),
+    ):
+        resp = client.post(
+            "/v1/chat/route",
+            json={"conversation_id": "c-int", "message": "what tokens are supported?"},
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["mode"] == IntentMode.QUERY.value
+    assert body["pending"] is True
+    assert body["questions"]
+    assert get_state("c-int") is not None
