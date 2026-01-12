@@ -119,6 +119,57 @@ def build_intent_classifier_prompt(message: str, context: Dict[str, Any]) -> Dic
                 },
             },
             {
+                "input": "1",
+                "context": {
+                    "history": [
+                        {"role": "user", "content": "swap usdc to weth"},
+                        {"role": "assistant", "content": "How much do you want to swap?"},
+                    ]
+                },
+                "output": {
+                    "mode": "ACTION",
+                    "intent_type": "SWAP",
+                    "confidence": 0.85,
+                    "slots": {"amount_in": "1", "token_in": "USDC", "token_out": "WETH"},
+                    "missing_slots": [],
+                    "reason": "amount provided in follow-up",
+                },
+            },
+            {
+                "input": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                "context": {
+                    "history": [
+                        {"role": "user", "content": "show my wallet snapshot"},
+                        {"role": "assistant", "content": "What wallet address should I use?"},
+                    ]
+                },
+                "output": {
+                    "mode": "QUERY",
+                    "intent_type": "WALLET_SNAPSHOT",
+                    "confidence": 0.85,
+                    "slots": {"wallet_address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"},
+                    "missing_slots": [],
+                    "reason": "wallet provided in follow-up",
+                },
+            },
+            {
+                "input": "mainnet",
+                "context": {
+                    "history": [
+                        {"role": "user", "content": "what is my usdc balance"},
+                        {"role": "assistant", "content": "Which chain are you using?"},
+                    ]
+                },
+                "output": {
+                    "mode": "QUERY",
+                    "intent_type": "BALANCE",
+                    "confidence": 0.8,
+                    "slots": {"chain_id": 1, "token_symbol": "USDC"},
+                    "missing_slots": [],
+                    "reason": "chain provided in follow-up",
+                },
+            },
+            {
                 "input": "what is my usdc balance?",
                 "output": {
                     "mode": "QUERY",

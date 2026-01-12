@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from db.models.run_step import RunStep
+from app.services.run_events import publish_event
 
 
 def utcnow() -> datetime:
@@ -41,6 +42,24 @@ def log_step(
     db.add(step)
     db.commit()
     db.refresh(step)
+
+    summary = None
+    if isinstance(output, dict):
+        summary = output.get("summary")
+    if status == "FAILED" and error:
+        summary = summary or error
+
+    publish_event(
+        str(run_id),
+        {
+            "type": "run_step",
+            "eventId": f"step:{step.id}",
+            "step": step_name,
+            "status": status,
+            "summary": summary,
+            "agent": agent,
+        },
+    )
     return step
 
 
