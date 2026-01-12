@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"
     openai_api_key: str | None = None
     llm_temperature: float = 0.0
+    llm_chat_temperature: float = 0.5
+    llm_chat_responses: bool = True
     llm_timeout_s: int = 30
     rpc_urls: str = "" 
     allowlist_to: str = Field(default="[]", alias="ALLOWLIST_TO")
@@ -106,6 +108,14 @@ class Settings(BaseSettings):
     @property
     def LLM_TEMPERATURE(self) -> float:
         return self.llm_temperature
+
+    @property
+    def LLM_CHAT_TEMPERATURE(self) -> float:
+        return self.llm_chat_temperature
+
+    @property
+    def LLM_CHAT_RESPONSES(self) -> bool:
+        return self.llm_chat_responses
 
     @property
     def LLM_TIMEOUT_S(self) -> int:

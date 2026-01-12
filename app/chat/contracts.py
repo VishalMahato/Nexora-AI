@@ -10,6 +10,7 @@ class IntentMode(str, Enum):
     QUERY = "QUERY"
     ACTION = "ACTION"
     CLARIFY = "CLARIFY"
+    GENERAL = "GENERAL"
 
 
 class ChatRouteRequest(BaseModel):
@@ -55,3 +56,4 @@ class ChatRouteResponse(BaseModel):
     conversation_id: str | None = None
     pending: bool = False
     pending_slots: dict[str, Any] = Field(default_factory=dict)
+    suggestions: list[str] = Field(default_factory=list)
