@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from sqlalchemy.orm import Session
 from web3 import Web3
@@ -14,7 +15,6 @@ from app.chat.state_store import get as get_state
 from app.chat.state_store import set as set_state
 from app.chat.tools import get_allowlists, get_token_balance, get_wallet_snapshot
 from app.config import get_settings
-
 
 _QUESTION_MAP = {
     "amount_in": "How much do you want to swap?",
@@ -56,11 +56,13 @@ def _resolve_wallet_chain(
     if state:
         wallet = wallet or state.get("wallet_address")
         chain_id = chain_id or state.get("chain_id")
+
     slots = classification.slots if classification else {}
     if not wallet:
         wallet = slots.get("wallet_address")
     if not chain_id:
         chain_id = slots.get("chain_id")
+
     if isinstance(chain_id, str) and chain_id.isdigit():
         chain_id = int(chain_id)
     return wallet, chain_id
@@ -97,15 +99,18 @@ def _query_payload(
     wallet_address: str | None,
     chain_id: int | None,
     slots: dict[str, str] | None,
-) -> tuple[str, dict[str, str]]:
-    data: dict[str, str] = {}
+) -> tuple[str, dict[str, Any]]:
+    data: dict[str, Any] = {}
+
     if intent == "ALLOWLISTS":
         chain_id = chain_id or 1
         data = {"allowlists": get_allowlists(chain_id)}
         assistant_message = "Here are the currently supported tokens and routers."
+
     elif intent in {"SNAPSHOT", "WALLET_SNAPSHOT"}:
         data = {"snapshot": get_wallet_snapshot(wallet_address, chain_id)}
         assistant_message = "Here is your wallet snapshot on this chain."
+
     else:
         token_symbol = slots.get("token_symbol") if slots else None
         if token_symbol:
@@ -115,6 +120,7 @@ def _query_payload(
         else:
             data = {"snapshot": get_wallet_snapshot(wallet_address, chain_id)}
             assistant_message = "Here is your wallet snapshot on this chain."
+
     return assistant_message, data
 
 
@@ -122,12 +128,14 @@ def _fast_path_slots(message: str, missing_slots: list[str], *, chain_id: int | 
     text = message.strip()
     lower = text.lower()
     slots: dict[str, str] = {}
+
     settings = get_settings()
     allowlisted = settings.allowlisted_tokens_for_chain(chain_id or 1)
     allowlisted_symbols = {k.upper() for k in allowlisted.keys()}
 
     if "amount_in" in missing_slots and _NUMBER_RE.match(text):
         slots["amount_in"] = text
+
     if "token_in" in missing_slots or "token_out" in missing_slots:
         for symbol in allowlisted_symbols:
             if symbol.lower() == lower:
@@ -136,8 +144,10 @@ def _fast_path_slots(message: str, missing_slots: list[str], *, chain_id: int | 
                 elif "token_out" in missing_slots:
                     slots["token_out"] = symbol
                 break
+
     if "chain_id" in missing_slots and lower in {"1", "mainnet", "ethereum", "eth"}:
         slots["chain_id"] = "1"
+
     if "wallet_address" in missing_slots and _WALLET_RE.fullmatch(text):
         slots["wallet_address"] = text
 
@@ -163,6 +173,7 @@ def _classification_from_state(
 def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
     cleanup_state()
     state = get_state(req.conversation_id) if req.conversation_id else None
+
     context = {
         "conversation_id": req.conversation_id,
         "wallet_address": req.wallet_address,
@@ -172,9 +183,11 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
 
     classification: IntentClassification | None = None
 
+    # Follow-up path (pending conversation)
     if state and state.get("missing_slots"):
         missing_slots = list(state.get("missing_slots") or [])
         partial_slots = dict(state.get("partial_slots") or {})
+
         fast_slots = _fast_path_slots(req.message, missing_slots, chain_id=state.get("chain_id"))
         if fast_slots:
             partial_slots.update(fast_slots)
@@ -193,13 +206,16 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
 
         intent_type = (state.get("intent_type") or (classification.intent_type if classification else "") or "").upper()
         wallet_address, chain_id = _resolve_wallet_chain(req, classification, state=state)
+
+        # QUERY follow-up
         if intent_type in _QUERY_INTENTS:
-            missing = []
+            missing: list[str] = []
             if _requires_wallet_chain(intent_type):
                 if not wallet_address or not Web3.is_address(wallet_address):
                     missing.append("wallet_address")
                 if not chain_id:
                     missing.append("chain_id")
+
             if missing:
                 if req.conversation_id:
                     set_state(
@@ -251,6 +267,7 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
                 pending=False,
             )
 
+        # ACTION follow-up
         if intent_type in _ACTION_INTENTS:
             missing = _missing_action_slots(intent_type, partial_slots, state.get("missing_slots"))
             if not wallet_address or not Web3.is_address(wallet_address):
@@ -298,6 +315,7 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
             run_result = start_run_for_action(db=db, run_id=run_id)
             run_status = run_result.get("status")
             fetch_url = f"/v1/runs/{run_id}?includeArtifacts=true"
+
             if req.conversation_id:
                 delete_state(req.conversation_id)
 
@@ -312,6 +330,7 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
                 conversation_id=req.conversation_id,
             )
 
+        # default follow-up fallback
         return ChatRouteResponse(
             mode=IntentMode.CLARIFY,
             assistant_message="I need a bit more detail to proceed.",
@@ -328,27 +347,27 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
             pending_slots=partial_slots,
         )
 
-    if classification is None:
-        raw = classify_intent(req.message, context)
-        try:
-            classification = IntentClassification.model_validate(raw)
-        except Exception:
-            classification = IntentClassification(
-                mode=IntentMode.CLARIFY,
-                missing_slots=["clarification"],
-                reason="invalid_classification",
-            )
+    # First message path (no pending state)
+    raw = classify_intent(req.message, context)
+    try:
+        classification = IntentClassification.model_validate(raw)
+    except Exception:
+        classification = IntentClassification(
+            mode=IntentMode.CLARIFY,
+            missing_slots=["clarification"],
+            reason="invalid_classification",
+        )
 
     if classification.mode == IntentMode.QUERY:
         intent = (classification.intent_type or "").upper()
-        missing = []
+        missing: list[str] = []
+
         if _requires_wallet_chain(intent):
-            if not req.wallet_address:
-                missing.append("wallet_address")
-            elif not Web3.is_address(req.wallet_address):
+            if not req.wallet_address or not Web3.is_address(req.wallet_address):
                 missing.append("wallet_address")
             if not req.chain_id:
                 missing.append("chain_id")
+
         if missing:
             clarify_classification = IntentClassification(
                 mode=IntentMode.CLARIFY,
@@ -396,6 +415,7 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
         if not chain_id:
             missing.append("chain_id")
         missing = list(dict.fromkeys(missing))
+
         if missing:
             clarify_classification = IntentClassification(
                 mode=IntentMode.CLARIFY,
@@ -436,6 +456,7 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
         run_result = start_run_for_action(db=db, run_id=run_id)
         run_status = run_result.get("status")
         fetch_url = f"/v1/runs/{run_id}?includeArtifacts=true"
+
         if req.conversation_id:
             delete_state(req.conversation_id)
 
@@ -450,6 +471,7 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
             conversation_id=req.conversation_id,
         )
 
+    # CLARIFY
     questions = _questions_for_missing_slots(classification.missing_slots)
     if req.conversation_id:
         set_state(
