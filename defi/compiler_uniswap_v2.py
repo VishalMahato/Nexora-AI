@@ -51,6 +51,7 @@ UNISWAP_V2_ROUTER_ABI: list[dict[str, Any]] = [
 
 
 MAX_UINT256 = (1 << 256) - 1
+BASE_UNIT_HEURISTIC_MAX_HUMAN = 1000
 
 
 @dataclass
@@ -116,6 +117,41 @@ def _to_base_units(amount_str: str, decimals: int) -> str:
     if base_units <= 0:
         raise ValueError("amount too small after decimals conversion")
     return str(base_units)
+
+
+def _validate_base_units(amount_str: str) -> str:
+    if not isinstance(amount_str, str) or not amount_str.isdigit():
+        raise ValueError(f"invalid base units amount: {amount_str}")
+    if int(amount_str) <= 0:
+        raise ValueError(f"amount must be positive: {amount_str}")
+    return amount_str
+
+
+def _looks_like_base_units(amount_str: str, decimals: int) -> bool:
+    if not isinstance(amount_str, str) or not amount_str.isdigit():
+        return False
+    if decimals <= 0:
+        return False
+    value = int(amount_str)
+    if value <= 0:
+        return False
+    unit = 10 ** decimals
+    if value < unit:
+        return False
+    if value % unit != 0:
+        return False
+    human = value // unit
+    return human <= BASE_UNIT_HEURISTIC_MAX_HUMAN
+
+
+def _resolve_amount_in_base_units(
+    *, amount_in_str: str, amount_in_base_units: str | None, decimals: int
+) -> tuple[str, str]:
+    if amount_in_base_units:
+        return _validate_base_units(amount_in_base_units), "base_units_field"
+    if _looks_like_base_units(amount_in_str, decimals):
+        return _validate_base_units(amount_in_str), "base_units_heuristic"
+    return _to_base_units(amount_in_str, decimals), "human_amount"
 
 
 def _erc20_approve_data(token_address: str, spender: str, amount: str) -> str:
@@ -230,6 +266,9 @@ def compile_uniswap_v2_plan(
             token_in_symbol = action.get("token_in") or ""
             token_out_symbol = action.get("token_out") or ""
             amount_in_str = action.get("amount_in") or ""
+            amount_in_base_units_raw = action.get("amount_in_base_units") or action.get(
+                "amountInBaseUnits"
+            )
 
             slippage_bps = action.get("slippage_bps")
             if slippage_bps is None:
@@ -249,7 +288,11 @@ def compile_uniswap_v2_plan(
             token_out_meta = _token_meta(allowlisted_tokens, token_out_symbol)
             router_key, router_address = _router_address(allowlisted_routers, router_key)
 
-            amount_in_base_units = _to_base_units(amount_in_str, token_in_meta.decimals)
+            amount_in_base_units, amount_in_source = _resolve_amount_in_base_units(
+                amount_in_str=amount_in_str,
+                amount_in_base_units=amount_in_base_units_raw,
+                decimals=token_in_meta.decimals,
+            )
             path = [token_in_meta.address, token_out_meta.address]
 
             call_data = _encode_get_amounts_out(router_address, amount_in_base_units, path)
@@ -262,6 +305,7 @@ def compile_uniswap_v2_plan(
                 "routerKey": router_key,
                 "path": path,
                 "amountIn": amount_in_base_units,
+                "amountInSource": amount_in_source,
                 "amountsOut": amounts_out,
                 "minOut": min_out,
                 "slippageBps": slippage_bps,
@@ -291,6 +335,7 @@ def compile_uniswap_v2_plan(
                     "tokenOut": token_out_meta.symbol,
                     "amountIn": amount_in_str,
                     "amountInBaseUnits": amount_in_base_units,
+                    "amountInSource": amount_in_source,
                     "minOut": min_out,
                     "slippageBps": slippage_bps,
                     "deadlineSeconds": deadline_seconds,

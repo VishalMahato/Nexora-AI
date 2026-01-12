@@ -52,3 +52,6 @@ class ChatRouteResponse(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
     next_ui: str | None = None
     classification: IntentClassification | None = None
+    conversation_id: str | None = None
+    pending: bool = False
+    pending_slots: dict[str, Any] = Field(default_factory=dict)

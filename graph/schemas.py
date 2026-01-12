@@ -28,6 +28,7 @@ class TxAction(BaseModel):
     token_in: str | None = None
     token_out: str | None = None
     amount_in: str | None = None
+    amount_in_base_units: str | None = None
     slippage_bps: int | None = Field(default=None, ge=0, le=10_000)
     deadline_seconds: int | None = Field(default=None, ge=0)
     recipient: str | None = None
