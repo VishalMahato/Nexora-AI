@@ -39,6 +39,8 @@ class RunResponse(BaseModel):
     wallet_address: str
     chain_id: int
     status: str
+    current_step: str | None = None
+    final_status: str | None = None
     error_code: str | None = None
     error_message: str | None = None
     artifacts: dict[str, Any] | None = None

@@ -46,6 +46,8 @@ def update_run_status(
     expected_from: RunStatus | None = None,
     error_code: str | None = None,
     error_message: str | None = None,
+    current_step: str | None = None,
+    final_status: str | None = None,
 ) -> Run:
     run = get_run(db, run_id)
     if not run:
@@ -61,6 +63,10 @@ def update_run_status(
     run.status = to_status.value
     run.error_code = error_code
     run.error_message = error_message
+    if current_step is not None:
+        run.current_step = current_step
+    if final_status is not None:
+        run.final_status = final_status
 
     db.add(run)
     db.commit()
@@ -95,6 +101,28 @@ def update_run_artifacts(
     return run
 
 
+def update_run_progress(
+    db: Session,
+    *,
+    run_id: uuid.UUID,
+    current_step: str | None = None,
+    final_status: str | None = None,
+) -> Run:
+    run = get_run(db, run_id)
+    if not run:
+        raise RunNotFoundError(f"Run not found: {run_id}")
+
+    if current_step is not None:
+        run.current_step = current_step
+    if final_status is not None:
+        run.final_status = final_status
+
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    return run
+
+
 def finalize_run(
     db: Session,
     *,
@@ -102,6 +130,8 @@ def finalize_run(
     artifacts: dict,
     to_status: RunStatus,
     expected_from: RunStatus | None = None,
+    current_step: str | None = None,
+    final_status: str | None = None,
 ) -> Run:
     run = get_run(db, run_id)
     if not run:
@@ -115,6 +145,10 @@ def finalize_run(
 
     run.artifacts = artifacts
     run.status = to_status.value
+    if current_step is not None:
+        run.current_step = current_step
+    if final_status is not None:
+        run.final_status = final_status
 
     db.add(run)
     db.commit()
