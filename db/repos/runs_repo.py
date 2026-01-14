@@ -7,6 +7,7 @@ from sqlalchemy import select
 from db.models.run import Run
 from app.domain.run_status import  assert_valid_transition
 from db.models.run import RunStatus
+from app.services.run_events import publish_event
 
 
 
@@ -64,6 +65,15 @@ def update_run_status(
     db.add(run)
     db.commit()
     db.refresh(run)
+
+    publish_event(
+        str(run_id),
+        {
+            "type": "run_status",
+            "eventId": f"status:{run_id}:{run.status}",
+            "status": run.status,
+        },
+    )
     return run
 
 
@@ -109,4 +119,13 @@ def finalize_run(
     db.add(run)
     db.commit()
     db.refresh(run)
+
+    publish_event(
+        str(run_id),
+        {
+            "type": "run_status",
+            "eventId": f"status:{run_id}:{run.status}",
+            "status": run.status,
+        },
+    )
     return run

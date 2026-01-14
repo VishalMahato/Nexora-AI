@@ -202,6 +202,25 @@ Optional: include artifacts
 
 Response includes `run.artifacts`.
 
+## 7a) Stream run events (live timeline)
+
+GET `/v1/runs/{runId}/events` (SSE)
+
+Behavior:
+
+- Replays existing timeline entries
+- Streams `run_step` and `run_status` events as the graph executes
+
+Example events:
+
+```json
+{"type":"run_step","runId":"uuid","step":"PLAN_TX","status":"OK","summary":"Planner produced a transaction plan.","replay":true}
+```
+
+```json
+{"type":"run_status","runId":"uuid","status":"AWAITING_APPROVAL"}
+```
+
 ## 8) Tool call logs (optional, for debug)
 
 GET `/v1/runs/{runId}/tool-calls`

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     llm_timeout_s: int = 30
     rpc_urls: str = "" 
     allowlist_to: str = Field(default="[]", alias="ALLOWLIST_TO")
+    allowlist_to_all: bool = Field(default=False, alias="ALLOWLIST_TO_ALL")
     allowlisted_tokens: dict[str, dict[str, dict[str, Any]]] = Field(
         default_factory=lambda: {
             "1": {
@@ -70,6 +71,8 @@ class Settings(BaseSettings):
         extra="ignore",   # ✅ ignore APP_ENV, LOG_LEVEL, etc
     )
     def allowlisted_to_set(self) -> Set[str]:
+        if self.allowlist_to_all:
+            return set()
         try:
             data = json.loads(self.allowlist_to or "[]")
             if not isinstance(data, list):

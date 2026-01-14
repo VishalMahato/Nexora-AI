@@ -181,6 +181,17 @@ def _missing_action_slots(
     return list(dict.fromkeys(missing))
 
 
+def _build_intent_from_slots(intent_type: str, slots: dict[str, str]) -> str | None:
+    intent = intent_type.upper()
+    if intent == "SWAP":
+        amount = slots.get("amount_in") or slots.get("amount")
+        token_in = slots.get("token_in")
+        token_out = slots.get("token_out")
+        if amount and token_in and token_out:
+            return f"swap {amount} {token_in} to {token_out}"
+    return None
+
+
 def _extract_block_reason(artifacts: dict[str, Any] | None) -> str | None:
     if not artifacts:
         return None
@@ -200,6 +211,8 @@ def _extract_block_reason(artifacts: dict[str, Any] | None) -> str | None:
 
 
 def _action_message_for_status(status: str | None, *, artifacts: dict[str, Any] | None = None) -> str:
+    if status == "CREATED":
+        return "Got it — I'm starting the run now and will stream updates as each step completes."
     if status == "BLOCKED":
         reason = _extract_block_reason(artifacts)
         if reason:
@@ -321,6 +334,7 @@ def _route_from_classification(
     db: Session,
     classification: IntentClassification,
 ) -> ChatRouteResponse:
+    defer_start = bool((req.metadata or {}).get("defer_start"))
     if classification.mode == IntentMode.QUERY:
         intent = (classification.intent_type or "").upper()
         if not intent:
@@ -471,8 +485,11 @@ def _route_from_classification(
             wallet_address=wallet_address,
             chain_id=int(chain_id),
         )
-        run_result = start_run_for_action(db=db, run_id=run_id)
-        run_status = run_result.get("status")
+        run_result: dict[str, Any] = {}
+        run_status = "CREATED"
+        if not defer_start:
+            run_result = start_run_for_action(db=db, run_id=run_id)
+            run_status = run_result.get("status")
         fetch_url = f"/v1/runs/{run_id}?includeArtifacts=true"
 
         if req.conversation_id:
@@ -542,6 +559,7 @@ def _normalize_classification(classification: IntentClassification) -> IntentCla
 
 def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
     cleanup_state()
+    defer_start = bool((req.metadata or {}).get("defer_start"))
     state = get_state(req.conversation_id) if req.conversation_id else None
     if state and (not state.get("missing_slots") or (not state.get("intent_type") and not state.get("partial_slots"))):
         if req.conversation_id:
@@ -805,15 +823,22 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
                     intent_type=intent_type,
                 )
 
-            intent_message = state.get("intent_message") or req.message
+            intent_message = (
+                _build_intent_from_slots(intent_type, partial_slots)
+                or state.get("intent_message")
+                or req.message
+            )
             run_id = create_run_from_action(
                 db=db,
                 intent=intent_message,
                 wallet_address=wallet_address,
                 chain_id=int(chain_id),
             )
-            run_result = start_run_for_action(db=db, run_id=run_id)
-            run_status = run_result.get("status")
+            run_result: dict[str, Any] = {}
+            run_status = "CREATED"
+            if not defer_start:
+                run_result = start_run_for_action(db=db, run_id=run_id)
+                run_status = run_result.get("status")
             fetch_url = f"/v1/runs/{run_id}?includeArtifacts=true"
 
             if req.conversation_id:

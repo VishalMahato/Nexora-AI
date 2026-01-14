@@ -18,6 +18,7 @@ from policy.types import (
     CheckStatus,
     Decision,
     DecisionAction,
+    PolicyCheckResult,
     PolicyResult,
     Severity,
 )
@@ -53,6 +54,7 @@ def evaluate_policies(
     allowlisted_to: Set[str] | None = None,
     allowlisted_tokens: Dict[str, Any] | None = None,
     allowlisted_routers: Dict[str, Any] | None = None,
+    allowlist_targets_enabled: bool = True,
     min_slippage_bps: int = 10,
     max_slippage_bps: int = 200,
 ) -> Tuple[PolicyResult, Decision]:
@@ -60,22 +62,38 @@ def evaluate_policies(
     allowlisted_tokens = allowlisted_tokens or {}
     allowlisted_routers = allowlisted_routers or {}
 
-    # Extend target allowlist with DeFi addresses so candidates from tx_requests
-    # do not fail the generic allowlist check.
-    allowlisted_to_extended = set(allowlisted_to)
-    for meta in allowlisted_tokens.values():
-        if isinstance(meta, dict) and meta.get("address"):
-            allowlisted_to_extended.add(str(meta["address"]).lower())
-    for meta in allowlisted_routers.values():
-        if isinstance(meta, str):
-            allowlisted_to_extended.add(meta.lower())
-        elif isinstance(meta, dict) and meta.get("address"):
-            allowlisted_to_extended.add(str(meta["address"]).lower())
-
     checks = [
         rule_required_artifacts_present(artifacts),   
         rule_no_signing_broadcast_invariant(artifacts),
-        rule_allowlist_targets(artifacts, allowlisted_to=allowlisted_to_extended),
+    ]
+
+    if allowlist_targets_enabled:
+        # Extend target allowlist with DeFi addresses so candidates from tx_requests
+        # do not fail the generic allowlist check.
+        allowlisted_to_extended = set(allowlisted_to)
+        for meta in allowlisted_tokens.values():
+            if isinstance(meta, dict) and meta.get("address"):
+                allowlisted_to_extended.add(str(meta["address"]).lower())
+        for meta in allowlisted_routers.values():
+            if isinstance(meta, str):
+                allowlisted_to_extended.add(meta.lower())
+            elif isinstance(meta, dict) and meta.get("address"):
+                allowlisted_to_extended.add(str(meta["address"]).lower())
+
+        checks.append(
+            rule_allowlist_targets(artifacts, allowlisted_to=allowlisted_to_extended)
+        )
+    else:
+        checks.append(
+            PolicyCheckResult(
+                id="allowlist_targets",
+                title="Allowlist: transaction targets",
+                status=CheckStatus.PASS,
+                reason="Target allowlist disabled by config.",
+            )
+        )
+
+    checks.extend([
         rule_defi_allowlists(
             artifacts,
             allowlisted_tokens=allowlisted_tokens,
@@ -85,7 +103,7 @@ def evaluate_policies(
         rule_swap_slippage_bounds(artifacts, min_bps=min_slippage_bps, max_bps=max_slippage_bps),
         rule_swap_min_out_present(artifacts),
         rule_simulation_success(artifacts),
-    ]
+    ])
 
     result = PolicyResult(checks=checks)
 

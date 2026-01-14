@@ -20,6 +20,7 @@ Notes:
 
 - Any token or router not on the allowlist is blocked.
 - Allowlists are evaluated in policy rules and compiler checks.
+- `ALLOWLIST_TO_ALL=true` disables the target allowlist check (dev only).
 
 ## Policy Checks (Current)
 

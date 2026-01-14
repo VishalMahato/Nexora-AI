@@ -61,6 +61,26 @@ Response (example ACTION):
 }
 ```
 
+### POST /v1/chat/route/stream
+
+Streams the assistant message and final response as server-sent events (SSE).
+
+Event types:
+
+- `status`: emitted immediately (`processing`)
+- `delta`: partial assistant message chunks
+- `final`: full `ChatRouteResponse` payload
+
+Example SSE payloads:
+
+```
+data: {"type":"status","status":"processing"}
+
+data: {"type":"delta","content":"Wallet snapshot..."}
+
+data: {"type":"final","response":{...}}
+```
+
 ## Runs
 
 ### POST /v1/runs
@@ -100,6 +120,23 @@ Alias for metadata without artifacts.
 ### GET /v1/runs/{id}/details
 
 Alias for metadata with artifacts.
+
+### GET /v1/runs/{id}/events
+
+Streams run step events as server-sent events (SSE).
+
+Behavior:
+
+- Replays existing timeline entries first
+- Continues streaming new `run_step` / `run_status` events
+
+Example events:
+
+```
+data: {"type":"run_step","runId":"...","step":"PLAN_TX","status":"OK","summary":"Planner produced a transaction plan.","replay":true}
+
+data: {"type":"run_status","runId":"...","status":"AWAITING_APPROVAL"}
+```
 
 ### POST /v1/runs/{id}/approve
 

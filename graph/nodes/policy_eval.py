@@ -27,6 +27,7 @@ def policy_eval(state: RunState, config: RunnableConfig) -> RunState:
         allowlisted_to=settings.allowlisted_to_set(),
         allowlisted_tokens=settings.allowlisted_tokens_for_chain(state.chain_id),
         allowlisted_routers=settings.allowlisted_routers_for_chain(state.chain_id),
+        allowlist_targets_enabled=not settings.allowlist_to_all,
         min_slippage_bps=settings.min_slippage_bps,
         max_slippage_bps=settings.max_slippage_bps,
     )
