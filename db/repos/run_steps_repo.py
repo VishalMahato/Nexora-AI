@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from db.models.run_step import RunStep
+from db.models.run import Run
 from app.services.run_events import publish_event
 
 
@@ -39,6 +40,11 @@ def log_step(
         started_at=started_at or utcnow(),
         ended_at=ended_at or (utcnow() if status in {"DONE", "FAILED"} else None),
     )
+    if status == "STARTED":
+        run = db.get(Run, run_id)
+        if run is not None:
+            run.current_step = step_name
+            db.add(run)
     db.add(step)
     db.commit()
     db.refresh(step)

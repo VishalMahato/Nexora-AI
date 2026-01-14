@@ -48,6 +48,8 @@ def _build_run_response(
             wallet_address=run.wallet_address,
             chain_id=run.chain_id,
             status=run.status,
+            current_step=getattr(run, "current_step", None),
+            final_status=getattr(run, "final_status", None),
             error_code=run.error_code,
             error_message=run.error_message,
             artifacts=run.artifacts if include_artifacts else None,
