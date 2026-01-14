@@ -12,7 +12,8 @@ TERMINAL = {
 
 ALLOWED = {
     RunStatus.CREATED: {RunStatus.RUNNING},
-    RunStatus.RUNNING: {RunStatus.AWAITING_APPROVAL, RunStatus.FAILED, RunStatus.BLOCKED},
+    RunStatus.RUNNING: {RunStatus.AWAITING_APPROVAL, RunStatus.FAILED, RunStatus.BLOCKED, RunStatus.PAUSED},
+    RunStatus.PAUSED: {RunStatus.RUNNING, RunStatus.FAILED, RunStatus.BLOCKED},
     RunStatus.AWAITING_APPROVAL: {RunStatus.APPROVED_READY, RunStatus.REJECTED},
     RunStatus.APPROVED_READY: {RunStatus.SUBMITTED},
     RunStatus.SUBMITTED: {RunStatus.CONFIRMED, RunStatus.REVERTED},

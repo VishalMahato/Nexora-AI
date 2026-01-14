@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.domain.final_status import FinalStatus
 from db.models.run import RunStatus
 from db.repos.run_steps_repo import log_step
 from db.repos.tool_calls_repo import log_tool_call
@@ -61,15 +62,70 @@ def create_run_with_audit(
     return run.id
 
 
-def _resolve_final_status(artifacts: dict) -> RunStatus:
-    judge_result = artifacts.get("judge_result") or {}
-    verdict = (judge_result.get("output") or {}).get("verdict")
+def _is_blocked(artifacts: dict) -> bool:
     decision = artifacts.get("decision") or {}
-    action = decision.get("action")
+    action = (decision.get("action") or "").upper()
+    if action == "BLOCK":
+        return True
 
-    if verdict == "BLOCK" or action == "BLOCK":
+    security_result = artifacts.get("security_result") or {}
+    security_status = (security_result.get("status") or "").upper()
+    if security_status == "BLOCK":
+        return True
+
+    judge_result = artifacts.get("judge_result") or {}
+    verdict = ((judge_result.get("output") or {}).get("verdict") or "").upper()
+    return verdict == "BLOCK"
+
+
+def _is_noop_plan(artifacts: dict) -> bool:
+    tx_plan = artifacts.get("tx_plan") or {}
+    return isinstance(tx_plan, dict) and tx_plan.get("type") == "noop"
+
+
+def _simulation_ok(artifacts: dict) -> bool:
+    simulation = artifacts.get("simulation")
+    if not isinstance(simulation, dict):
+        return False
+    if simulation.get("status") == "completed":
+        return True
+    if simulation.get("success") is True:
+        return True
+    return False
+
+
+def _resolve_final_status(artifacts: dict) -> FinalStatus:
+    if artifacts.get("fatal_error"):
+        return FinalStatus.FAILED
+
+    if artifacts.get("needs_input"):
+        return FinalStatus.NEEDS_INPUT
+
+    if _is_blocked(artifacts):
+        return FinalStatus.BLOCKED
+
+    if _is_noop_plan(artifacts):
+        return FinalStatus.NOOP
+
+    if not artifacts.get("tx_plan"):
+        return FinalStatus.FAILED
+
+    if not _simulation_ok(artifacts):
+        return FinalStatus.FAILED
+
+    return FinalStatus.READY
+
+
+def _map_run_status(final_status: FinalStatus) -> RunStatus:
+    if final_status == FinalStatus.READY:
+        return RunStatus.AWAITING_APPROVAL
+    if final_status == FinalStatus.BLOCKED:
         return RunStatus.BLOCKED
-    return RunStatus.AWAITING_APPROVAL
+    if final_status == FinalStatus.FAILED:
+        return RunStatus.FAILED
+    if final_status in {FinalStatus.NEEDS_INPUT, FinalStatus.NOOP}:
+        return RunStatus.PAUSED
+    return RunStatus.FAILED
 
 
 def start_run_sync(*, db: Session, run_id: UUID) -> dict:
@@ -106,19 +162,22 @@ def start_run_sync(*, db: Session, run_id: UUID) -> dict:
         )
 
         final_status = _resolve_final_status(artifacts)
+        run_status = _map_run_status(final_status)
 
         finalize_run(
             db,
             run_id=run_id,
             artifacts=artifacts,
-            to_status=final_status,
+            to_status=run_status,
             expected_from=RunStatus.RUNNING,
+            final_status=final_status.value,
         )
 
         return {
             "ok": True,
             "runId": str(run.id),
-            "status": final_status.value,
+            "status": run_status.value,
+            "final_status": final_status.value,
             "artifacts": artifacts,
         }
     except Exception as e:
@@ -135,6 +194,7 @@ def start_run_sync(*, db: Session, run_id: UUID) -> dict:
                 expected_from=RunStatus.RUNNING,
                 error_code="GRAPH_EXECUTION_ERROR",
                 error_message=f"{type(e).__name__}: {e}",
+                final_status=FinalStatus.FAILED.value,
             )
         except Exception:
             pass

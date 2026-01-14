@@ -39,6 +39,7 @@ def _fake_snapshot():
 def test_llm_plan_success_logged_and_used(client, monkeypatch):
     recipient = "0x7777777777777777777777777777777777777777"
     monkeypatch.setenv("ALLOWLIST_TO", f'[\"{recipient}\"]')
+    monkeypatch.setenv("ALLOWLIST_TO_ALL", "false")
     monkeypatch.setenv("LLM_ENABLED", "true")
     get_settings.cache_clear()
 
@@ -85,6 +86,7 @@ def test_llm_plan_success_logged_and_used(client, monkeypatch):
         body = s.json()
 
     assert body["status"] == RunStatus.AWAITING_APPROVAL.value
+    assert body["final_status"] == "READY"
     assert body["artifacts"]["tx_plan"]["type"] == "plan"
     assert body["artifacts"]["decision"]["action"] == "NEEDS_APPROVAL"
 
@@ -116,7 +118,8 @@ def test_llm_invalid_plan_falls_back_to_stub(client, monkeypatch):
         assert s.status_code == 200, s.text
         body = s.json()
 
-    assert body["status"] == RunStatus.AWAITING_APPROVAL.value
+    assert body["status"] == RunStatus.PAUSED.value
+    assert body["final_status"] == "NOOP"
     assert body["artifacts"]["tx_plan"]["type"] == "noop"
     assert "planner_warnings" in body["artifacts"]
     assert body["artifacts"]["planner_fallback"]["used"] is True
@@ -126,6 +129,7 @@ def test_llm_plan_non_allowlisted_is_blocked(client, monkeypatch):
     allowed = "0x8888888888888888888888888888888888888888"
     recipient = "0x9999999999999999999999999999999999999999"
     monkeypatch.setenv("ALLOWLIST_TO", f'[\"{allowed}\"]')
+    monkeypatch.setenv("ALLOWLIST_TO_ALL", "false")
     monkeypatch.setenv("LLM_ENABLED", "true")
     get_settings.cache_clear()
 
