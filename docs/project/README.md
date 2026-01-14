@@ -36,6 +36,7 @@ If you are new to the codebase, start here and follow the reading order below.
 17) 16-decision-log.md
 18) 17-glossary.md
 19) 18-postman-testing.md
+20) 19-step-by-step-ui-integration.md
 
 ## Ownership
 
@@ -76,4 +77,8 @@ These are still in use. If you edit or move them, update this hub.
 - The next team can run the system locally in under 30 minutes.
 - The next team can reason about run behavior without reading code.
 - The next team can extend flows without breaking safety guarantees.
+
+## Change log
+
+- 2026-01-13: Added the step-by-step UI integration doc to the reading order.
 

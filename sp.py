@@ -444,17 +444,289 @@ if st.session_state.get("clear_input"):
 # Minimal inline styles for MVP
 st.markdown("""
 <style>
-.chat-container { background: #f8f9fa; border-radius: 8px; padding: 1rem; margin: 1rem 0; min-height: 400px; max-height: 600px; overflow-y: auto; }
-.message { margin: 0.5rem 0; display: flex; }
-.message.user { justify-content: flex-end; }
-.message.assistant { justify-content: flex-start; }
-.message-bubble { padding: 0.75rem 1rem; border-radius: 12px; max-width: 75%; }
-.message.user .message-bubble { background: #6366f1; color: white; }
-.message.assistant .message-bubble { background: white; border: 1px solid #e2e8f0; }
-.message-time { font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem; }
-.loading-dots { display: inline-flex; gap: 0.25rem; }
-.loading-dot { width: 6px; height: 6px; border-radius: 50%; background: #6366f1; animation: bounce 1.4s infinite; }
-@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+* {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Hide Streamlit branding */
+#MainMenu, footer, header {
+    visibility: hidden;
+}
+
+.block-container {
+    padding: 1rem 2rem 2rem 2rem;
+    max-width: 1200px;
+}
+
+/* Chat Container - Prevent reflow */
+.chat-container { 
+    background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px; 
+    padding: 1.5rem; 
+    margin: 1rem 0; 
+    min-height: 500px;
+    max-height: 600px;
+    overflow-y: auto;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    /* Prevent layout shift */
+    contain: layout;
+}
+
+.chat-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.chat-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Messages */
+.message { 
+    margin: 0 0 1rem 0;
+    display: flex;
+    /* Smooth appearance */
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.message.user { 
+    justify-content: flex-end; 
+}
+
+.message.assistant { 
+    justify-content: flex-start; 
+}
+
+.message-bubble { 
+    padding: 0.875rem 1.125rem;
+    border-radius: 16px;
+    max-width: 75%;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.message.user .message-bubble { 
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.message.assistant .message-bubble { 
+    background: white;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.message-time { 
+    font-size: 0.75rem;
+    opacity: 0.6;
+    margin-top: 0.375rem;
+    font-weight: 500;
+}
+
+/* Status message bubble */
+.message.status .message-bubble {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid #bae6fd;
+    color: #0369a1;
+    border-radius: 12px;
+}
+
+/* Loading dots */
+.loading-dots { 
+    display: inline-flex;
+    gap: 0.25rem;
+    margin-left: 0.5rem;
+}
+
+.loading-dot { 
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.6;
+    animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dot:nth-child(1) { animation-delay: -0.32s; }
+.loading-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+    0%, 80%, 100% { 
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    40% { 
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Step indicator */
+.step-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border: 1px solid #93c5fd;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e40af;
+    margin-top: 0.5rem;
+}
+
+.step-indicator .step-name {
+    font-weight: 700;
+}
+
+.step-indicator .step-status {
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.step-indicator.running {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-color: #fbbf24;
+    color: #92400e;
+}
+
+.step-indicator.done {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border-color: #34d399;
+    color: #065f46;
+}
+
+/* Header */
+.nexora-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.nexora-header h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.nexora-header p {
+    margin: 0;
+    opacity: 0.95;
+    font-size: 1.125rem;
+}
+
+/* Buttons */
+.stButton > button {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+}
+
+.stButton > button:active {
+    transform: translateY(0);
+}
+
+.stButton > button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Input fields */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stSelectbox > div > div > select {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus,
+.stSelectbox > div > div > select:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    outline: none;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0.5rem;
+    background: white;
+    padding: 0.5rem;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.stTabs [data-baseweb="tab"] {
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 600;
+    color: #64748b;
+    transition: all 0.2s ease;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Sidebar */
+.css-1d391kg, [data-testid="stSidebar"] {
+    background: white;
+    border-right: 1px solid #e2e8f0;
+}
+
+/* Info boxes */
+.stAlert {
+    border-radius: 12px;
+    border-left-width: 4px;
+}
+
+/* Prevent layout shift on rerun */
+[data-testid="stMarkdownContainer"] {
+    contain: layout;
+}
 </style>
 """, unsafe_allow_html=True)
 
