@@ -141,6 +141,7 @@ def test_start_run_blocked_by_policy(client, monkeypatch):
         allowlisted_to=None,
         allowlisted_tokens=None,
         allowlisted_routers=None,
+        allowlist_targets_enabled=None,
         min_slippage_bps=10,
         max_slippage_bps=200,
     ):

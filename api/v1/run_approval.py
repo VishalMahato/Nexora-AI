@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from api.schemas.approval import RunApproveRequest, RunRejectRequest
+from api.v1.run_guards import ensure_final_status_ready
 from db.deps import get_db
 from db.models.run import RunStatus
 from db.repos.runs_repo import (
@@ -34,6 +35,8 @@ def approve_run(
     run = get_run(db, run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
+
+    ensure_final_status_ready(run=run, action="approve")
 
     if RunStatus(run.status) != RunStatus.AWAITING_APPROVAL:
         raise HTTPException(
