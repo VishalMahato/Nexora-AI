@@ -16,6 +16,7 @@ from db.base import Base
 class RunStatus(enum.Enum):
     CREATED = "CREATED"
     RUNNING = "RUNNING"
+    PAUSED = "PAUSED"
     AWAITING_APPROVAL = "AWAITING_APPROVAL"
     APPROVED_READY = "APPROVED_READY"
     SUBMITTED = "SUBMITTED"

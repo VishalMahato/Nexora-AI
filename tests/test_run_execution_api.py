@@ -43,7 +43,8 @@ def test_start_run_transitions_and_logs_steps(client):
         assert s.status_code == 200, s.text
 
         body = s.json()
-        assert body["status"] == RunStatus.AWAITING_APPROVAL.value
+        assert body["status"] == RunStatus.PAUSED.value
+        assert body["final_status"] == "NOOP"
 
         artifacts = body["artifacts"]
         assert artifacts["normalized_intent"] == "Start Run Test"
@@ -237,6 +238,7 @@ def test_start_run_native_transfer_plan_creates_candidate(client, monkeypatch):
 
         body = s.json()
         assert body["status"] == RunStatus.AWAITING_APPROVAL.value
+        assert body["final_status"] == "READY"
 
         artifacts = body["artifacts"]
         assert artifacts["tx_plan"]["type"] == "plan"
@@ -342,6 +344,8 @@ def test_start_run_judge_verdict_mapping(client, monkeypatch):
         artifacts = {
             "decision": {"action": "NEEDS_APPROVAL"},
             "judge_result": {"output": {"verdict": verdict}},
+            "tx_plan": {"type": "plan"},
+            "simulation": {"status": "completed"},
         }
 
         def fake_run_graph(_db, _state, *, _artifacts=artifacts):

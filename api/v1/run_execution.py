@@ -21,6 +21,7 @@ def start_run(run_id: UUID, db: Session = Depends(get_db)):
     Minimal synchronous execution:
     CREATED -> RUNNING -> AWAITING_APPROVAL (on success)
     CREATED -> RUNNING -> FAILED (on exception)
+    CREATED -> RUNNING -> PAUSED (noop/needs_input)
 
     With policy engine (F12):
     CREATED -> RUNNING -> BLOCKED (if decision.action == BLOCK)
