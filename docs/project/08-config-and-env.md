@@ -36,6 +36,7 @@ RPC:
 Allowlists:
 
 - `ALLOWLIST_TO`
+- `ALLOWLIST_TO_ALL` (true/false, disable target allowlist checks for local dev)
 - `ALLOWLISTED_TOKENS`
 - `ALLOWLISTED_ROUTERS`
 
