@@ -83,7 +83,7 @@ def create_run_endpoint(payload: RunCreateRequest, db: Session = Depends(get_db)
     return RunCreateResponse(runId=run.id, status=run.status)
 
 
-@router.get("/{run_id}", response_model=GetRunResponse, response_model_exclude_none=True)
+@router.get("/{run_id}", response_model=GetRunResponse, response_model_exclude_none=False)
 def get_run_endpoint(
     run_id: UUID,
     includeArtifacts: bool = Query(False, description="Include run artifacts in response"),
@@ -96,7 +96,7 @@ def get_run_endpoint(
     return _build_run_response(run=run, include_artifacts=includeArtifacts)
 
 
-@router.get("/{run_id}/status", response_model=GetRunResponse, response_model_exclude_none=True)
+@router.get("/{run_id}/status", response_model=GetRunResponse, response_model_exclude_none=False)
 def get_run_status_endpoint(run_id: UUID, db: Session = Depends(get_db)) -> GetRunResponse:
     run = get_run(db, run_id)
     if not run:
@@ -105,7 +105,7 @@ def get_run_status_endpoint(run_id: UUID, db: Session = Depends(get_db)) -> GetR
     return _build_run_response(run=run, include_artifacts=False)
 
 
-@router.get("/{run_id}/details", response_model=GetRunResponse, response_model_exclude_none=True)
+@router.get("/{run_id}/details", response_model=GetRunResponse, response_model_exclude_none=False)
 def get_run_details_endpoint(run_id: UUID, db: Session = Depends(get_db)) -> GetRunResponse:
     run = get_run(db, run_id)
     if not run:

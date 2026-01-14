@@ -3,7 +3,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from app.config import get_settings
-from db.models.run import RunStatus
+from db.models.run import Run, RunStatus
 from db.repos.runs_repo import get_run
 from db.session import SessionLocal
 
@@ -56,6 +56,45 @@ def test_execute_wrong_state_409(client):
 
     e = client.post(f"/v1/runs/{run_id}/execute")
     assert e.status_code == 409
+
+
+def test_execute_requires_final_status_ready(client):
+    payload = {
+        "intent": "final status execute guard",
+        "walletAddress": VALID_WALLET,
+        "chainId": 1,
+    }
+    r = client.post("/v1/runs", json=payload)
+    assert r.status_code == 200
+    run_id = r.json()["runId"]
+
+    db = SessionLocal()
+    try:
+        run = db.get(Run, run_id)
+        assert run is not None
+        run.status = RunStatus.APPROVED_READY.value
+        run.final_status = "NEEDS_INPUT"
+        run.artifacts = {
+            "tx_plan": {
+                "candidates": [
+                    {
+                        "chain_id": 1,
+                        "to": "0x1111111111111111111111111111111111111111",
+                        "data": "0x",
+                        "valueWei": "0",
+                    }
+                ]
+            }
+        }
+        db.add(run)
+        db.commit()
+    finally:
+        db.close()
+
+    e = client.post(f"/v1/runs/{run_id}/execute")
+    assert e.status_code == 409
+    assert "cannot execute" in e.json()["detail"]
+    assert "NEEDS_INPUT" in e.json()["detail"]
 
 
 def test_execute_returns_tx_request_for_approved_run(client, monkeypatch):
