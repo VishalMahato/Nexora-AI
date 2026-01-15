@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import re
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -13,11 +15,14 @@ from app.chat.state_store import delete as delete_state
 from app.chat.state_store import get as get_state
 from app.chat.state_store import set as set_state
 from app.chat.tools import get_allowlists, get_token_balance, get_wallet_snapshot
+from app.config import get_settings
 
 _QUESTION_MAP = {
     "amount_in": "How much do you want to swap?",
     "token_in": "Which token are you swapping from?",
     "token_out": "Which token do you want to receive?",
+    "token_symbol": "Which token should I use?",
+    "token": "Which token should I use?",
     "wallet_address": "What wallet address should I use?",
     "chain_id": "Which chain are you using (e.g., Ethereum mainnet)?",
 }
@@ -30,6 +35,10 @@ _GENERAL_SUGGESTIONS = [
     "Swap USDC to WETH",
     "Check USDC balance",
 ]
+
+_ACTION_KEYWORDS = {"swap", "trade", "send", "transfer", "approve", "buy", "sell", "move"}
+
+logger = logging.getLogger(__name__)
 
 
 def _short_address(value: str | None) -> str:
@@ -162,6 +171,121 @@ def _resolve_wallet_chain(
     if isinstance(chain_id, str) and chain_id.isdigit():
         chain_id = int(chain_id)
     return wallet, chain_id
+
+
+def _supported_action_tokens(chain_id: int | None) -> set[str]:
+    settings = get_settings()
+    tokens = settings.allowlisted_tokens_for_chain(chain_id)
+    if not tokens:
+        return set()
+    supported: set[str] = set()
+    for symbol, meta in tokens.items():
+        if isinstance(meta, dict) and meta.get("is_native"):
+            continue
+        supported.add(str(symbol).upper())
+    return supported
+
+
+def _extract_action_tokens(slots: dict[str, str] | None) -> set[str]:
+    if not slots:
+        return set()
+    tokens: set[str] = set()
+    for key in ("token_in", "token_out", "token_symbol", "token", "asset"):
+        value = slots.get(key)
+        if isinstance(value, str) and value.strip():
+            tokens.add(value.strip().upper())
+    return tokens
+
+
+def _message_mentions_supported_token(message: str, supported_tokens: set[str]) -> bool:
+    if not supported_tokens or not message:
+        return False
+    text = message.upper()
+    for token in supported_tokens:
+        if re.search(rf"\\b{re.escape(token)}\\b", text):
+            return True
+    return False
+
+
+def _has_action_keyword(message: str) -> bool:
+    if not message:
+        return False
+    text = message.lower()
+    return any(keyword in text for keyword in _ACTION_KEYWORDS)
+
+
+def _gibberish_score(message: str, *, min_len: int) -> float:
+    text = (message or "").strip()
+    if not text:
+        return 1.0
+    if Web3.is_address(text):
+        return 0.0
+    if re.fullmatch(r"\\d+(\\.\\d+)?", text):
+        return 0.0
+
+    letters = sum(1 for c in text if c.isalpha())
+    alnum = sum(1 for c in text if c.isalnum())
+    vowels = sum(1 for c in text if c.lower() in "aeiou")
+
+    score = 0.0
+    if len(text) < min_len:
+        score += 0.35
+    alpha_ratio = letters / alnum if alnum else 0.0
+    if alpha_ratio < 0.3:
+        score += 0.35
+    vowel_ratio = vowels / letters if letters else 0.0
+    if letters and vowel_ratio < 0.2:
+        score += 0.3
+    if re.search(r"(.)\\1\\1\\1", text):
+        score += 0.35
+
+    tokens = re.findall(r"[A-Za-z]{4,}", text)
+    if tokens:
+        no_vowel = sum(1 for token in tokens if not any(ch in "aeiouAEIOU" for ch in token))
+        if no_vowel / len(tokens) > 0.6:
+            score += 0.3
+
+    return min(score, 1.0)
+
+
+def _is_gibberish(message: str, *, settings) -> bool:
+    score = _gibberish_score(message, min_len=settings.chat_min_message_len)
+    return score >= settings.chat_gibberish_score_max
+
+
+def _should_block_action_message(
+    message: str,
+    *,
+    confidence: float | None,
+    supported_tokens: set[str],
+    settings,
+) -> bool:
+    if confidence is not None and confidence < settings.chat_min_confidence:
+        return True
+    signal_ok = _has_action_keyword(message) or _message_mentions_supported_token(
+        message, supported_tokens
+    )
+    if not signal_ok:
+        return True
+    if _is_gibberish(message, settings=settings) and not _has_action_keyword(message):
+        return True
+    return False
+
+
+def _unsupported_token_message(supported_tokens: set[str]) -> str:
+    if not supported_tokens:
+        return "This action is not supported yet. Please try a supported token."
+    supported_list = ", ".join(sorted(supported_tokens))
+    return f"We currently support {supported_list} only. Which token should I use?"
+
+
+def _unsupported_token_missing_slots(intent_type: str | None) -> list[str]:
+    intent = (intent_type or "").upper()
+    if intent == "SWAP":
+        return ["token_in", "token_out"]
+    if intent in {"TRANSFER", "APPROVE"}:
+        return ["token_symbol"]
+    return ["token"]
 
 
 def _missing_action_slots(
@@ -479,9 +603,82 @@ def _route_from_classification(
                 intent_type=classification.intent_type,
             )
 
+        settings = get_settings()
+        supported_tokens = _supported_action_tokens(chain_id)
+        tokens = _extract_action_tokens(classification.slots or {})
+        unsupported = tokens - supported_tokens if supported_tokens else set()
+        if unsupported:
+            missing_tokens = _unsupported_token_missing_slots(classification.intent_type)
+            clarify_classification = IntentClassification(
+                mode=IntentMode.CLARIFY,
+                intent_type=classification.intent_type,
+                confidence=classification.confidence,
+                slots=classification.slots,
+                missing_slots=missing_tokens,
+                reason="unsupported_token",
+            )
+            if req.conversation_id:
+                set_state(
+                    req.conversation_id,
+                    {
+                        "intent_type": (classification.intent_type or "").upper(),
+                        "intent_message": req.message,
+                        "partial_slots": classification.slots or {},
+                        "missing_slots": missing_tokens,
+                        "wallet_address": wallet_address,
+                        "chain_id": chain_id,
+                    },
+                )
+            return _finalize_response(
+                ChatRouteResponse(
+                    mode=IntentMode.CLARIFY,
+                    assistant_message=_unsupported_token_message(supported_tokens),
+                    questions=_questions_for_missing_slots(missing_tokens),
+                    classification=clarify_classification,
+                    conversation_id=req.conversation_id,
+                    pending=True,
+                    pending_slots=classification.slots or {},
+                ),
+                req=req,
+                mode=IntentMode.CLARIFY,
+                intent_type=classification.intent_type,
+            )
+
+        intent_message = _build_intent_from_slots(
+            classification.intent_type or "",
+            classification.slots or {},
+        ) or req.message
+        if _should_block_action_message(
+            req.message,
+            confidence=classification.confidence,
+            supported_tokens=supported_tokens,
+            settings=settings,
+        ):
+            logger.info("router_guard: blocked action intent", extra={"reason": "low_signal"})
+            assistant_message, data, suggestions = _general_payload()
+            assistant_message = "I didn't catch that. Could you rephrase what you want to do?"
+            downgraded = classification.model_copy(
+                update={"mode": IntentMode.GENERAL, "reason": "low_signal_or_gibberish"}
+            )
+            return _finalize_response(
+                ChatRouteResponse(
+                    mode=IntentMode.GENERAL,
+                    assistant_message=assistant_message,
+                    questions=[],
+                    data=data,
+                    suggestions=suggestions,
+                    classification=downgraded,
+                    conversation_id=req.conversation_id,
+                    pending=False,
+                ),
+                req=req,
+                mode=IntentMode.GENERAL,
+                intent_type=classification.intent_type,
+            )
+
         run_id = create_run_from_action(
             db=db,
-            intent=req.message,
+            intent=intent_message,
             wallet_address=wallet_address,
             chain_id=int(chain_id),
         )
@@ -572,6 +769,8 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
         "chain_id": req.chain_id,
         "metadata": req.metadata,
     }
+    if req.chain_id:
+        context["supported_tokens"] = sorted(_supported_action_tokens(req.chain_id))
     if req.metadata and isinstance(req.metadata, dict):
         history = req.metadata.get("history")
         if isinstance(history, list):
@@ -820,14 +1019,84 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
                     ),
                     req=req,
                     mode=IntentMode.CLARIFY,
-                    intent_type=intent_type,
-                )
+                intent_type=intent_type,
+            )
 
             intent_message = (
                 _build_intent_from_slots(intent_type, partial_slots)
                 or state.get("intent_message")
                 or req.message
             )
+            settings = get_settings()
+            supported_tokens = _supported_action_tokens(chain_id)
+            tokens = _extract_action_tokens(partial_slots)
+            unsupported = tokens - supported_tokens if supported_tokens else set()
+            if unsupported:
+                missing_tokens = _unsupported_token_missing_slots(intent_type)
+                if req.conversation_id:
+                    set_state(
+                        req.conversation_id,
+                        {
+                            "intent_type": intent_type,
+                            "intent_message": state.get("intent_message") or req.message,
+                            "partial_slots": partial_slots,
+                            "missing_slots": missing_tokens,
+                            "wallet_address": wallet_address,
+                            "chain_id": chain_id,
+                        },
+                    )
+                return _finalize_response(
+                    ChatRouteResponse(
+                        mode=IntentMode.CLARIFY,
+                        assistant_message=_unsupported_token_message(supported_tokens),
+                        questions=_questions_for_missing_slots(missing_tokens),
+                        classification=classification
+                        or _classification_from_state(
+                            intent_type=intent_type,
+                            slots=partial_slots,
+                            missing_slots=missing_tokens,
+                            reason="unsupported_token",
+                        ),
+                        conversation_id=req.conversation_id,
+                        pending=True,
+                        pending_slots=partial_slots,
+                    ),
+                    req=req,
+                    mode=IntentMode.CLARIFY,
+                    intent_type=intent_type,
+                )
+
+            if _should_block_action_message(
+                intent_message,
+                confidence=classification.confidence if classification else None,
+                supported_tokens=supported_tokens,
+                settings=settings,
+            ):
+                logger.info("router_guard: blocked action intent", extra={"reason": "low_signal"})
+                assistant_message, data, suggestions = _general_payload()
+                assistant_message = "I didn't catch that. Could you rephrase what you want to do?"
+                downgraded = (classification or _classification_from_state(
+                    intent_type=intent_type,
+                    slots=partial_slots,
+                    missing_slots=[],
+                    reason="low_signal_or_gibberish",
+                )).model_copy(update={"mode": IntentMode.GENERAL, "reason": "low_signal_or_gibberish"})
+                return _finalize_response(
+                    ChatRouteResponse(
+                        mode=IntentMode.GENERAL,
+                        assistant_message=assistant_message,
+                        questions=[],
+                        data=data,
+                        suggestions=suggestions,
+                        classification=downgraded,
+                        conversation_id=req.conversation_id,
+                        pending=False,
+                    ),
+                    req=req,
+                    mode=IntentMode.GENERAL,
+                    intent_type=intent_type,
+                )
+
             run_id = create_run_from_action(
                 db=db,
                 intent=intent_message,

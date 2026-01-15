@@ -124,3 +124,66 @@ def test_chat_action_missing_wallet_returns_clarify(client):
     body = resp.json()
     assert body["mode"] == IntentMode.CLARIFY.value
     assert body["questions"]
+
+
+def test_chat_action_gibberish_blocks_run(client):
+    with (
+        patch(
+            "app.chat.router.classify_intent",
+            return_value={
+                "mode": "ACTION",
+                "intent_type": "SWAP",
+                "confidence": 0.95,
+                "slots": {"token_in": "USDC", "token_out": "WETH", "amount_in": "1"},
+                "missing_slots": [],
+                "reason": "actionable swap",
+            },
+        ),
+        patch("app.chat.router.create_run_from_action") as create_run,
+        patch("app.chat.router.start_run_for_action") as start_run,
+    ):
+        resp = client.post(
+            "/v1/chat/route",
+            json={
+                "message": "swaop sbfja to sjkhak",
+                "wallet_address": "0x1111111111111111111111111111111111111111",
+                "chain_id": 1,
+            },
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["mode"] == IntentMode.GENERAL.value
+    create_run.assert_not_called()
+    start_run.assert_not_called()
+
+
+def test_chat_action_unsupported_token_returns_clarify(client):
+    with (
+        patch(
+            "app.chat.router.classify_intent",
+            return_value={
+                "mode": "ACTION",
+                "intent_type": "SWAP",
+                "confidence": 0.9,
+                "slots": {"token_in": "DAI", "token_out": "USDC", "amount_in": "1"},
+                "missing_slots": [],
+                "reason": "actionable swap",
+            },
+        ),
+        patch("app.chat.router.create_run_from_action") as create_run,
+    ):
+        resp = client.post(
+            "/v1/chat/route",
+            json={
+                "message": "swap 1 dai to usdc",
+                "wallet_address": "0x1111111111111111111111111111111111111111",
+                "chain_id": 1,
+            },
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["mode"] == IntentMode.CLARIFY.value
+    assert "support" in body["assistant_message"].lower()
+    create_run.assert_not_called()

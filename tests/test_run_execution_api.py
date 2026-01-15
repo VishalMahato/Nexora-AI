@@ -144,6 +144,7 @@ def test_start_run_blocked_by_policy(client, monkeypatch):
         allowlist_targets_enabled=None,
         min_slippage_bps=10,
         max_slippage_bps=200,
+        assumed_success_warn=True,
     ):
         return (
             PolicyResult(checks=[]),

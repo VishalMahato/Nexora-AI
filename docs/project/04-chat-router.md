@@ -71,6 +71,15 @@ Action flow:
 3) If complete, create and start a run.
 4) Return `run_id` / `run_ref` and a short summary.
 
+## Guardrails (F36)
+
+Before creating a run, the router applies deterministic safety checks:
+
+- Low-signal / gibberish inputs are downgraded to GENERAL.
+- ACTION runs are gated by supported tokens (from allowlists).
+
+These guardrails prevent run creation for nonsense inputs or unsupported assets.
+
 Note: `run_ref.status` is coarse. Fetch the run for `final_status` and
 `current_step` when rendering action UI.
 
@@ -147,5 +156,6 @@ CLARIFY (missing wallet):
 ## Change log
 
 - 2026-01-14: Add note about final_status/current_step usage.
+- 2026-01-15: Add router guardrails for gibberish and supported tokens.
 - 2026-01-15: Clarify chat CLARIFY vs run resume.
 

@@ -30,6 +30,7 @@ def policy_eval(state: RunState, config: RunnableConfig) -> RunState:
         allowlist_targets_enabled=not settings.allowlist_to_all,
         min_slippage_bps=settings.min_slippage_bps,
         max_slippage_bps=settings.max_slippage_bps,
+        assumed_success_warn=settings.simulation_assumed_success_warn,
     )
 
     state.artifacts["policy_result"] = policy_result.model_dump()

@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     default_deadline_seconds: int = Field(default=1200, alias="DEFAULT_DEADLINE_SECONDS")
     min_slippage_bps: int = Field(default=10, alias="MIN_SLIPPAGE_BPS")
     max_slippage_bps: int = Field(default=200, alias="MAX_SLIPPAGE_BPS")
+    simulation_assumed_success_warn: bool = Field(
+        default=True, alias="SIMULATION_ASSUMED_SUCCESS_WARN"
+    )
+    chat_min_confidence: float = Field(default=0.35, alias="CHAT_MIN_CONFIDENCE")
+    chat_gibberish_score_max: float = Field(default=0.6, alias="CHAT_GIBBERISH_SCORE_MAX")
+    chat_min_message_len: int = Field(default=6, alias="CHAT_MIN_MESSAGE_LEN")
     # --- observability ---
     log_level: str = "INFO"
     log_json: bool = False
