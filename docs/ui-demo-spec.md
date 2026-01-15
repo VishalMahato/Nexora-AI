@@ -45,7 +45,8 @@ artifacts with maximum clarity and minimal build effort.
 - Vertical list or table of steps.
 - Columns: step_name, status, timestamp.
 - Highlight current step.
-- If status is AWAITING_APPROVAL, show a banner.
+- If status is AWAITING_APPROVAL and `final_status == READY`, show a banner.
+- If status is PAUSED and `final_status == NEEDS_INPUT`, show a clarify banner.
 
 #### Tab 3 - Artifacts / Debug
 - Collapsible JSON viewers for:
@@ -60,7 +61,7 @@ artifacts with maximum clarity and minimal build effort.
 
 ## Approval + Execution UX
 
-- When run is `AWAITING_APPROVAL`, show tx_requests table:
+- When run is `AWAITING_APPROVAL` and `final_status == READY`, show tx_requests table:
   - kind, to, value, data (collapsed), gas estimate (if present)
 - Checkbox: "I understand and approve"
 - Button: `Approve Run`
@@ -92,4 +93,8 @@ Optional tools:
 - Exactly one ACTION intent active per conversation.
 - QUERY intents are non-blocking and can be answered while an ACTION is pending.
 - On ACTION, auto-switch to Run Timeline tab when `run_id` is returned.
+
+## Change log
+
+- 2026-01-14: Add final_status/PAUSED handling for UI banners.
 

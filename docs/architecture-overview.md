@@ -31,6 +31,7 @@ User -> Conversational UI -> Conversation Router (LLM)
    - Deterministic action pipeline.
    - Produces artifacts, timeline, tx_requests, simulation results.
    - Gates execution behind approval.
+   - Resolves `final_status` in the service layer for UI gating.
 
 4) Tool APIs (read-only)
    - Wallet balances, allowances, allowlists/config.
@@ -71,6 +72,7 @@ FastAPI
 2) POST /v1/runs/{id}/start
 3) Graph pipeline:
    - INPUT_NORMALIZE
+   - PRECHECK (cheap validation; may request clarification)
    - WALLET_SNAPSHOT
    - PLAN_TX
    - BUILD_TXS (compiler -> tx_requests)
@@ -79,6 +81,7 @@ FastAPI
    - SECURITY_EVAL (AgentResult wrapper)
    - JUDGE_AGENT
    - REPAIR_ROUTER / REPAIR_PLAN_TX (bounded retry)
+   - CLARIFY (if `needs_input` is set)
    - FINALIZE
 4) UI shows timeline + artifacts, asks for approval
 5) POST /v1/runs/{id}/approve
@@ -104,8 +107,8 @@ Chat modes:
 
 Run status handling:
 
-- NEEDS_INPUT -> render questions, call provide_input
-- AWAITING_APPROVAL -> show tx_requests + approve
+- Use `final_status` for UI decisions (READY/NEEDS_INPUT/BLOCKED/FAILED/NOOP)
+- AWAITING_APPROVAL -> show tx_requests + approve (only when `final_status == READY`)
 - BLOCKED -> show reasons
 
 ## Safety Guarantees
@@ -133,3 +136,7 @@ Run status handling:
 - Multi-intent dialog management (threads, interrupt rules, disambiguation)
   is deferred to a product-level release. Current chat routing supports a
   single active intent with clarify follow-ups.
+
+## Change log
+
+- 2026-01-14: Add PRECHECK/CLARIFY and final_status gating notes.

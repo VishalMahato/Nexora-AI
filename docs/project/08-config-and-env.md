@@ -73,6 +73,14 @@ ALLOWLISTED_TOKENS = {
 Routers:
 
 ```
+
+Targets:
+
+```
+ALLOWLIST_TO = ["0xabc...", "0xdef..."]
+```
+
+When `ALLOWLIST_TO_ALL=true`, target address checks are skipped (dev only).
 ALLOWLISTED_ROUTERS = {
   "1": {
     "UNISWAP_V2_ROUTER": { "address": "0x..." }
@@ -85,4 +93,8 @@ ALLOWLISTED_ROUTERS = {
 - If `LLM_ENABLED` is false, chat and planner fall back to safe defaults.
 - Keep allowlists minimal for demo safety.
 - Changes to allowlists affect policy rules and compilation.
+
+## Change log
+
+- 2026-01-14: Clarify target allowlist format and bypass flag.
 

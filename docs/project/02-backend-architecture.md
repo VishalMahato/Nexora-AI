@@ -69,6 +69,7 @@ tests/             # pytest suites
 The execution graph is where deterministic processing happens. Key nodes:
 
 - INPUT_NORMALIZE
+- PRECHECK (cheap validation, may set `needs_input`)
 - WALLET_SNAPSHOT
 - PLAN_TX
 - BUILD_TXS
@@ -77,13 +78,14 @@ The execution graph is where deterministic processing happens. Key nodes:
 - SECURITY_EVAL
 - JUDGE_AGENT
 - REPAIR_ROUTER / REPAIR_PLAN_TX
+- CLARIFY (ensures questions are present)
 - FINALIZE
 
 The graph produces:
 
 - Artifacts (tx_plan, tx_requests, simulation, policy_result, decision)
 - Timeline entries for UI
-- Run status transitions
+- `assistant_message` in artifacts
 
 ## Policy Layer (policy/)
 
@@ -114,6 +116,7 @@ Two categories:
 
 - `app/services/runs_service.py` contains run creation and start logic
   used by both HTTP routes and chat action flow.
+  - Resolves `final_status` and maps it to `runs.status`.
 
 ## Extension Guidelines
 
@@ -126,4 +129,8 @@ Two categories:
 - `docs/project/03-run-lifecycle.md`
 - `docs/project/04-chat-router.md`
 - `docs/project/06-data-models.md`
+
+## Change log
+
+- 2026-01-14: Add PRECHECK/CLARIFY nodes and final_status ownership.
 

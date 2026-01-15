@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Python 3.11+ (matches project tooling)
+- Python 3.12 (matches project tooling)
 - Postgres
 - RPC provider access
 - Optional: `uv` for faster Python environment management
@@ -71,4 +71,8 @@ curl -s -X POST http://localhost:8000/v1/chat/route \
 
 - If LLM is disabled, chat falls back to safe default responses.
 - Keep RPC rate limits in mind when running tests.
+
+## Change log
+
+- 2026-01-14: Align Python version with current tooling.
 

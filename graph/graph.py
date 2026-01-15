@@ -11,7 +11,7 @@ from graph.nodes import (
     input_normalize,
     precheck,
     wallet_snapshot,
-    plan_tx,        
+    plan_tx,
     build_txs,
     simulate_txs,
     policy_eval,
@@ -22,6 +22,7 @@ from graph.nodes import (
     clarify,
     finalize,
 )
+from graph.utils.routing import route_post_step
 
 
 def build_graph() -> StateGraph:
@@ -35,7 +36,7 @@ def build_graph() -> StateGraph:
     graph.add_node("INPUT_NORMALIZE", input_normalize)
     graph.add_node("PRECHECK", precheck)
     graph.add_node("WALLET_SNAPSHOT", wallet_snapshot)
-    graph.add_node("PLAN_TX", plan_tx)          # ✅ ADD
+    graph.add_node("PLAN_TX", plan_tx)
     graph.add_node("BUILD_TXS", build_txs)
     graph.add_node("SIMULATE_TXS", simulate_txs)
     graph.add_node("POLICY_EVAL", policy_eval)
@@ -48,34 +49,26 @@ def build_graph() -> StateGraph:
 
     graph.set_entry_point("INPUT_NORMALIZE")
 
-    def route_or_clarify(next_step: str):
+    def route_or_finalize(next_step: str):
         def _route(state: RunState) -> str:
-            if state.artifacts.get("needs_input"):
-                return "CLARIFY"
-            return next_step
+            return route_post_step(state, default_next=next_step)
         return _route
-
-    def route_from_precheck(state: RunState) -> str:
-        if state.artifacts.get("fatal_error"):
-            return "FINALIZE"
-        if state.artifacts.get("needs_input"):
-            return "CLARIFY"
-        return "WALLET_SNAPSHOT"
 
     graph.add_conditional_edges(
         "INPUT_NORMALIZE",
-        route_or_clarify("PRECHECK"),
+        route_or_finalize("PRECHECK"),
         {
             "CLARIFY": "CLARIFY",
+            "FINALIZE": "FINALIZE",
             "PRECHECK": "PRECHECK",
         },
     )
     graph.add_conditional_edges(
         "PRECHECK",
-        route_from_precheck,
+        route_or_finalize("WALLET_SNAPSHOT"),
         {
-            "FINALIZE": "FINALIZE",
             "CLARIFY": "CLARIFY",
+            "FINALIZE": "FINALIZE",
             "WALLET_SNAPSHOT": "WALLET_SNAPSHOT",
         },
     )
@@ -83,65 +76,71 @@ def build_graph() -> StateGraph:
     # ✅ INSERT PLAN_TX in the pipeline
     graph.add_conditional_edges(
         "WALLET_SNAPSHOT",
-        route_or_clarify("PLAN_TX"),
+        route_or_finalize("PLAN_TX"),
         {
             "CLARIFY": "CLARIFY",
+            "FINALIZE": "FINALIZE",
             "PLAN_TX": "PLAN_TX",
         },
     )
     graph.add_conditional_edges(
         "PLAN_TX",
-        route_or_clarify("BUILD_TXS"),
+        route_or_finalize("BUILD_TXS"),
         {
             "CLARIFY": "CLARIFY",
+            "FINALIZE": "FINALIZE",
             "BUILD_TXS": "BUILD_TXS",
         },
     )
     graph.add_conditional_edges(
         "BUILD_TXS",
-        route_or_clarify("SIMULATE_TXS"),
+        route_or_finalize("SIMULATE_TXS"),
         {
             "CLARIFY": "CLARIFY",
+            "FINALIZE": "FINALIZE",
             "SIMULATE_TXS": "SIMULATE_TXS",
         },
     )
     graph.add_conditional_edges(
         "SIMULATE_TXS",
-        route_or_clarify("POLICY_EVAL"),
+        route_or_finalize("POLICY_EVAL"),
         {
             "CLARIFY": "CLARIFY",
+            "FINALIZE": "FINALIZE",
             "POLICY_EVAL": "POLICY_EVAL",
         },
     )
     graph.add_conditional_edges(
         "POLICY_EVAL",
-        route_or_clarify("SECURITY_EVAL"),
+        route_or_finalize("SECURITY_EVAL"),
         {
             "CLARIFY": "CLARIFY",
+            "FINALIZE": "FINALIZE",
             "SECURITY_EVAL": "SECURITY_EVAL",
         },
     )
     graph.add_conditional_edges(
         "SECURITY_EVAL",
-        route_or_clarify("JUDGE_AGENT"),
+        route_or_finalize("JUDGE_AGENT"),
         {
             "CLARIFY": "CLARIFY",
+            "FINALIZE": "FINALIZE",
             "JUDGE_AGENT": "JUDGE_AGENT",
         },
     )
     graph.add_conditional_edges(
         "JUDGE_AGENT",
-        route_or_clarify("REPAIR_ROUTER"),
+        route_or_finalize("REPAIR_ROUTER"),
         {
             "CLARIFY": "CLARIFY",
+            "FINALIZE": "FINALIZE",
             "REPAIR_ROUTER": "REPAIR_ROUTER",
         },
     )
 
     def route_repair(state: RunState) -> str:
-        if state.artifacts.get("needs_input"):
-            return "CLARIFY"
-        return state.artifacts.get("repair_next_step", "FINALIZE")
+        next_step = state.artifacts.get("repair_next_step", "FINALIZE")
+        return route_post_step(state, default_next=next_step)
 
     graph.add_conditional_edges(
         "REPAIR_ROUTER",
@@ -155,9 +154,10 @@ def build_graph() -> StateGraph:
 
     graph.add_conditional_edges(
         "REPAIR_PLAN_TX",
-        route_or_clarify("BUILD_TXS"),
+        route_or_finalize("BUILD_TXS"),
         {
             "CLARIFY": "CLARIFY",
+            "FINALIZE": "FINALIZE",
             "BUILD_TXS": "BUILD_TXS",
         },
     )

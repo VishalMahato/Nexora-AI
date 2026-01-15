@@ -71,6 +71,9 @@ Action flow:
 3) If complete, create and start a run.
 4) Return `run_id` / `run_ref` and a short summary.
 
+Note: `run_ref.status` is coarse. Fetch the run for `final_status` and
+`current_step` when rendering action UI.
+
 ## Clarify Handling
 
 When required fields are missing:
@@ -132,4 +135,8 @@ CLARIFY (missing wallet):
 
 - `docs/project/05-api-reference.md`
 - `docs/project/06-data-models.md`
+
+## Change log
+
+- 2026-01-14: Add note about final_status/current_step usage.
 

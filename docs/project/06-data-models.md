@@ -50,10 +50,20 @@ used by the frontend, tests, and LLM contracts.
     "wallet_address": "...",
     "chain_id": 1,
     "status": "...",
+    "current_step": "...",
+    "final_status": "...",
     "artifacts": { ... }
   }
 }
 ```
+
+`final_status` values:
+
+- READY
+- NEEDS_INPUT
+- BLOCKED
+- FAILED
+- NOOP
 
 ## AgentResult
 
@@ -176,6 +186,24 @@ Array of timeline entries:
 { "step": "PLAN_TX", "status": "OK", "title": "planner", "summary": "..." }
 ```
 
+## needs_input
+
+Stored in `artifacts["needs_input"]` when the graph requires clarification:
+
+```
+{
+  "questions": ["..."],
+  "missing": ["wallet_address", "amount"],
+  "resume_from": "PLAN_TX",
+  "data": { "chain_options": [1, 10] }
+}
+```
+
+## assistant_message
+
+FINALIZE writes a user-facing response to `artifacts["assistant_message"]` for
+display in the UI or chat flow.
+
 ## References
 
 Source files:
@@ -185,4 +213,8 @@ Source files:
 - `app/contracts/judge_result.py`
 - `defi/` compiler outputs
 - `graph/nodes/` artifacts
+
+## Change log
+
+- 2026-01-14: Add final_status/current_step and needs_input contracts.
 

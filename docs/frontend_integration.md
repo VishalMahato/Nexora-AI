@@ -13,6 +13,7 @@ Local dev:
 
 ```
 CREATED -> RUNNING -> AWAITING_APPROVAL -> APPROVED_READY -> SUBMITTED -> CONFIRMED|REVERTED
+                  \-> PAUSED (NEEDS_INPUT or NOOP)
                     \-> BLOCKED
                     \-> FAILED
                     \-> REJECTED
@@ -48,7 +49,8 @@ Response (core fields only):
 {
   "ok": true,
   "runId": "uuid",
-  "status": "AWAITING_APPROVAL|BLOCKED",
+  "status": "AWAITING_APPROVAL|PAUSED|BLOCKED|FAILED",
+  "final_status": "READY|NEEDS_INPUT|NOOP|BLOCKED|FAILED",
   "artifacts": { ... }
 }
 ```
@@ -103,6 +105,10 @@ Response:
 ```json
 { "ok": true, "runId": "uuid", "status": "APPROVED_READY|REJECTED" }
 ```
+
+Approve/execute guards:
+
+- `final_status` must be `READY` (otherwise 409).
 
 ## 4) Execute (build tx request for wallet)
 
@@ -187,6 +193,8 @@ Response:
     "wallet_address": "0x...",
     "chain_id": 1,
     "status": "AWAITING_APPROVAL",
+    "current_step": "PLAN_TX",
+    "final_status": "READY",
     "error_code": null,
     "error_message": null,
     "created_at": "...",
@@ -331,4 +339,8 @@ swap as assumed success if allowance cannot be applied in a stateless `eth_call`
 - `AWAITING_APPROVAL`: show plan + simulation + warnings
 - `SUBMITTED`: show pending status, poll `/poll_tx`
 - `CONFIRMED|REVERTED`: show receipt summary
+
+## Change log
+
+- 2026-01-14: Add final_status/current_step and PAUSED handling.
 

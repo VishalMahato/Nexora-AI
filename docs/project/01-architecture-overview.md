@@ -36,6 +36,7 @@ User
    - Produces artifacts, timeline, and tx_requests.
    - Enforces policy and safety checks.
    - Pauses at approval gate.
+   - Resolves `final_status` for UI gating and safe approvals.
 
 4) Tool APIs (Read-only)
    - Wallet snapshot
@@ -66,7 +67,7 @@ User
 3) UI calls `POST /v1/runs`.
 4) UI calls `POST /v1/runs/{id}/start`.
 5) Graph executes and returns artifacts.
-6) UI shows timeline and asks for approval.
+6) UI shows timeline and checks `final_status`.
 7) UI calls `POST /v1/runs/{id}/approve`.
 8) UI calls `POST /v1/runs/{id}/execute` to get tx_requests.
 9) UI signs via wallet (frontend).
@@ -83,6 +84,7 @@ User
 - Deterministic artifacts: every run produces machine + human readable outputs.
 - Explainability: timeline entries for each step.
 - Safe by default: allowlists and simulation gates.
+- Approval/execute are guarded by `final_status == READY`.
 
 ## Known Limitations
 
@@ -95,4 +97,8 @@ User
 - `docs/project/03-run-lifecycle.md`
 - `docs/project/04-chat-router.md`
 - `docs/project/05-api-reference.md`
+
+## Change log
+
+- 2026-01-14: Document final_status gating in run flow.
 

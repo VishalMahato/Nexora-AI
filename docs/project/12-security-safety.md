@@ -54,7 +54,9 @@ Simulation rules:
 
 ## Approval Gate
 
-- Runs stop at `AWAITING_APPROVAL`.
+- Runs stop at `AWAITING_APPROVAL` only when `final_status == READY`.
+- Approve/execute endpoints reject runs unless `final_status == READY`.
+- Runs with `final_status` NEEDS_INPUT or NOOP map to `PAUSED`.
 - The frontend is responsible for showing tx_requests and requiring user
   confirmation.
 
@@ -81,3 +83,7 @@ When LLM output is invalid:
 
 - Each run stores timeline entries for every step.
 - Artifacts include source lists and timestamps.
+
+## Change log
+
+- 2026-01-14: Document final_status gating for approve/execute.

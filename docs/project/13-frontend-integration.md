@@ -21,15 +21,19 @@ Explain how the UI should call backend endpoints and render results.
 ## Run Rendering Rules
 
 - Show `timeline` in order.
+- Use `current_step` for progress indicators.
 - Display `tx_requests` for approval.
 - Use `judge_result` and `security_result` for explainability sections.
 - If `simulation` includes `assumed_success`, show a warning badge.
+- Use `artifacts.assistant_message` for the final user-facing summary.
 
 ## Status Handling
 
 When run status is:
 
-- `AWAITING_APPROVAL`: show approval controls.
+- `AWAITING_APPROVAL`: show approval controls only if `final_status == READY`.
+- `PAUSED` + `final_status == NEEDS_INPUT`: show questions from `needs_input`.
+- `PAUSED` + `final_status == NOOP`: show `assistant_message` and prompt for a new intent.
 - `BLOCKED`: show reasons and stop.
 - `FAILED`: show error and stop.
 - `APPROVED_READY`: enable execute button.
@@ -54,3 +58,7 @@ When run status is:
 - NEEDS_APPROVAL
 - EXECUTING
 - DONE / BLOCKED
+
+## Change log
+
+- 2026-01-14: Add guidance for final_status/current_step and PAUSED.
