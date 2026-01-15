@@ -12,6 +12,7 @@ from db.repos.run_steps_repo import log_step
 from graph.artifacts import append_timeline_event, agent_result_to_timeline, put_artifact
 from graph.schemas import TxCandidate, TxPlan, TxAction
 from graph.state import RunState
+from graph.utils.needs_input import set_needs_input
 from llm.client import LLMClient
 from llm.prompts import build_plan_tx_prompt
 from tools.tool_runner import run_tool
@@ -145,6 +146,75 @@ def _noop_plan(normalized_intent: str, reason: str) -> Dict[str, Any]:
     }
 
 
+def _detect_missing_inputs(
+    *,
+    normalized_intent: str,
+    chain_id: int | None,
+    wallet_address: str | None,
+    allowlisted_tokens: Dict[str, Any],
+) -> tuple[list[str], dict[str, Any]]:
+    missing: list[str] = []
+    data: dict[str, Any] = {}
+
+    if not chain_id:
+        missing.append("chain_id")
+    if not wallet_address:
+        missing.append("wallet_address")
+
+    text = " ".join(normalized_intent.lower().split())
+    if text.startswith("swap"):
+        match = re.match(
+            r"^swap(?:\s+([0-9]+(?:\.[0-9]+)?))?(?:\s+([a-zA-Z0-9]+))?(?:\s+to\s+([a-zA-Z0-9]+))?$",
+            text,
+        )
+        if match:
+            amount = match.group(1)
+            token_in = match.group(2)
+            token_out = match.group(3)
+        else:
+            amount = None
+            token_in = None
+            token_out = None
+
+        if not amount:
+            missing.append("amount_in")
+        if not token_in:
+            missing.append("token_in")
+        if not token_out:
+            missing.append("token_out")
+
+        allowset = {k.upper() for k in (allowlisted_tokens or {}).keys()}
+        if token_in and token_in.upper() not in allowset:
+            missing.append("token_in")
+        if token_out and token_out.upper() not in allowset:
+            missing.append("token_out")
+        if allowset:
+            data["token_options"] = sorted(allowset)
+
+    if text.startswith("send") or text.startswith("transfer"):
+        match = re.match(
+            r"^(send|transfer)(?:\s+([0-9]+(?:\.[0-9]+)?))?(?:\s+([a-zA-Z0-9]+))?(?:\s+to\s+(0x[a-fA-F0-9]{40}))?$",
+            text,
+        )
+        if match:
+            amount = match.group(2)
+            asset = match.group(3)
+            to_addr = match.group(4)
+        else:
+            amount = None
+            asset = None
+            to_addr = None
+        if not amount:
+            missing.append("amount")
+        if not asset:
+            missing.append("asset")
+        if not to_addr:
+            missing.append("recipient")
+
+    missing = list(dict.fromkeys(missing))
+    return missing, data
+
+
 def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
     db: Session = config["configurable"]["db"]
     settings = get_settings()
@@ -201,6 +271,36 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
     }
 
     state.artifacts["planner_input"] = planner_input
+
+    missing, needs_data = _detect_missing_inputs(
+        normalized_intent=normalized_intent,
+        chain_id=chain_id,
+        wallet_address=state.wallet_address,
+        allowlisted_tokens=allowlisted_tokens,
+    )
+    if missing:
+        set_needs_input(
+            state,
+            missing=missing,
+            resume_from="PLAN_TX",
+            data=needs_data,
+        )
+        tx_plan = _noop_plan(normalized_intent, "needs_input")
+        state.artifacts["tx_plan"] = tx_plan
+
+        log_step(
+            db,
+            run_id=state.run_id,
+            step_name="PLAN_TX",
+            status="DONE",
+            output={
+                "tx_plan": tx_plan,
+                "missing": missing,
+                "needs_input": state.artifacts.get("needs_input"),
+            },
+            agent="LangGraph",
+        )
+        return state
 
     try:
         planner_warnings: List[str] = []
