@@ -1,4 +1,5 @@
 from graph.nodes.input_normalize import input_normalize
+from graph.nodes.precheck import precheck
 from graph.nodes.wallet_snapshot import wallet_snapshot
 from graph.nodes.plan_tx import plan_tx, _plan_tx_stub
 from graph.nodes.build_txs import build_txs
@@ -13,6 +14,7 @@ from graph.nodes.finalize import finalize
 
 __all__ = [
     "input_normalize",
+    "precheck",
     "wallet_snapshot",
     "plan_tx",
     "_plan_tx_stub",
