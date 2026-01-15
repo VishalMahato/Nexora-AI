@@ -15,6 +15,7 @@ _QUESTION_MAP = {
     "wallet_address": "What wallet address should I use?",
     "chain_id": "Which chain are you using (e.g., Ethereum mainnet)?",
     "recipient": "What recipient address should I use?",
+    "intent": "What would you like to do?",
 }
 
 

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from graph.state import RunState
 from graph.nodes import (
     input_normalize,
+    precheck,
     wallet_snapshot,
     plan_tx,        
     build_txs,
@@ -25,13 +26,14 @@ from graph.nodes import (
 
 def build_graph() -> StateGraph:
     """
-    INPUT_NORMALIZE -> WALLET_SNAPSHOT -> PLAN_TX -> BUILD_TXS
+    INPUT_NORMALIZE -> PRECHECK -> WALLET_SNAPSHOT -> PLAN_TX -> BUILD_TXS
     -> SIMULATE_TXS -> POLICY_EVAL -> SECURITY_EVAL -> JUDGE_AGENT -> REPAIR_ROUTER
     -> (REPAIR_PLAN_TX -> BUILD_TXS -> SIMULATE_TXS -> POLICY_EVAL -> SECURITY_EVAL -> JUDGE_AGENT) -> FINALIZE -> END
     """
     graph = StateGraph(RunState)
 
     graph.add_node("INPUT_NORMALIZE", input_normalize)
+    graph.add_node("PRECHECK", precheck)
     graph.add_node("WALLET_SNAPSHOT", wallet_snapshot)
     graph.add_node("PLAN_TX", plan_tx)          # ✅ ADD
     graph.add_node("BUILD_TXS", build_txs)
@@ -53,10 +55,26 @@ def build_graph() -> StateGraph:
             return next_step
         return _route
 
+    def route_from_precheck(state: RunState) -> str:
+        if state.artifacts.get("fatal_error"):
+            return "FINALIZE"
+        if state.artifacts.get("needs_input"):
+            return "CLARIFY"
+        return "WALLET_SNAPSHOT"
+
     graph.add_conditional_edges(
         "INPUT_NORMALIZE",
-        route_or_clarify("WALLET_SNAPSHOT"),
+        route_or_clarify("PRECHECK"),
         {
+            "CLARIFY": "CLARIFY",
+            "PRECHECK": "PRECHECK",
+        },
+    )
+    graph.add_conditional_edges(
+        "PRECHECK",
+        route_from_precheck,
+        {
+            "FINALIZE": "FINALIZE",
             "CLARIFY": "CLARIFY",
             "WALLET_SNAPSHOT": "WALLET_SNAPSHOT",
         },
