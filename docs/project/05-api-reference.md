@@ -109,6 +109,31 @@
   { "ok": true, "runId": "...", "status": "...", "final_status": "...", "artifacts": { ... } }
   ```
 
+  ### POST /v1/runs/{id}/resume
+
+  Resumes a paused run that needs input.
+
+  Request:
+
+  ```
+  {
+    "answers": { "amount": "1", "token_out": "WETH" },
+    "metadata": { "source": "ui" }
+  }
+  ```
+
+  Response:
+
+  ```
+  { "ok": true, "runId": "...", "status": "...", "final_status": "...", "artifacts": { ... } }
+  ```
+
+  Guards:
+
+  - Requires `status == PAUSED` and `final_status == NEEDS_INPUT`.
+  - Returns 409 if no checkpoint is found.
+  - Merges `answers` into `artifacts.user_inputs` and clears `needs_input`.
+
   ### GET /v1/runs/{id}
 
   Fetches run metadata. Supports `includeArtifacts=true`.
@@ -198,4 +223,5 @@
   ## Change log
 
   - 2026-01-14: Document final_status/current_step and approval guards.
+  - 2026-01-15: Add resume endpoint and merge behavior notes.
 

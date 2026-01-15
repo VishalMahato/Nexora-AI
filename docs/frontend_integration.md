@@ -110,6 +110,30 @@ Approve/execute guards:
 
 - `final_status` must be `READY` (otherwise 409).
 
+## 3a) Resume a paused run (NEEDS_INPUT)
+
+POST `/v1/runs/{runId}/resume`
+
+Request:
+
+```json
+{
+  "answers": { "amount": "1", "token_out": "WETH" },
+  "metadata": { "source": "ui" }
+}
+```
+
+Response:
+
+```json
+{ "ok": true, "runId": "uuid", "status": "RUNNING", "final_status": "NEEDS_INPUT" }
+```
+
+Guards:
+
+- Requires `status == PAUSED` and `final_status == NEEDS_INPUT`.
+- Returns 409 if no checkpoint exists.
+
 ## 4) Execute (build tx request for wallet)
 
 POST `/v1/runs/{runId}/execute`
@@ -343,4 +367,5 @@ swap as assumed success if allowance cannot be applied in a stateless `eth_call`
 ## Change log
 
 - 2026-01-14: Add final_status/current_step and PAUSED handling.
+- 2026-01-15: Add resume endpoint guidance.
 

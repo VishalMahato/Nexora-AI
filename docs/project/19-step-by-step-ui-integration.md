@@ -145,6 +145,36 @@ Use the response to render:
 - `artifacts.assistant_message`
 - `current_step` and `final_status` for UI state decisions
 
+### 2.5 Resume when the run needs input
+
+If the run returns:
+
+- `status: PAUSED`
+- `final_status: NEEDS_INPUT`
+
+Use `artifacts.needs_input` to ask follow-up questions, then call:
+
+```
+POST /v1/runs/{run_id}/resume
+```
+
+Request example:
+
+```json
+{
+  "answers": {
+    "amount": "1",
+    "token_out": "WETH"
+  },
+  "metadata": { "source": "ui" }
+}
+```
+
+After resume:
+
+- Re-open `GET /v1/runs/{run_id}/events` to stream new steps.
+- Fetch artifacts again once the run reaches a terminal status.
+
 ## Step 3: Approval and execution
 
 ### 3.1 Approve the run
@@ -248,3 +278,4 @@ Use this for UI typing effects; it does not replace run events.
 
 - 2026-01-13: Initial version.
 - 2026-01-14: Add final_status/current_step and PAUSED handling.
+- 2026-01-15: Add resume flow for NEEDS_INPUT runs.

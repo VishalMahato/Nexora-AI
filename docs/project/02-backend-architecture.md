@@ -34,6 +34,7 @@ tests/             # pytest suites
 - `api/v1/run_execution.py`
   - `POST /v1/runs`
   - `POST /v1/runs/{id}/start`
+  - `POST /v1/runs/{id}/resume`
 
 - `api/v1/run_approval.py`
   - `POST /v1/runs/{id}/approve`
@@ -86,6 +87,7 @@ The graph produces:
 - Artifacts (tx_plan, tx_requests, simulation, policy_result, decision)
 - Timeline entries for UI
 - `assistant_message` in artifacts
+- Checkpointed state keyed by `thread_id = run_id`
 
 ## Policy Layer (policy/)
 
@@ -117,6 +119,7 @@ Two categories:
 - `app/services/runs_service.py` contains run creation and start logic
   used by both HTTP routes and chat action flow.
   - Resolves `final_status` and maps it to `runs.status`.
+  - Loads checkpoints and resumes runs for `needs_input`.
 
 ## Extension Guidelines
 
@@ -133,4 +136,5 @@ Two categories:
 ## Change log
 
 - 2026-01-14: Add PRECHECK/CLARIFY nodes and final_status ownership.
+- 2026-01-15: Add resume endpoint and checkpointing notes.
 

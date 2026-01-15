@@ -57,6 +57,27 @@ used by the frontend, tests, and LLM contracts.
 }
 ```
 
+### RunResumeRequest (POST /v1/runs/{id}/resume)
+
+```
+{
+  "answers": { "amount": "1", "token_out": "WETH" },
+  "metadata": { "source": "ui" }
+}
+```
+
+### RunResumeResponse (POST /v1/runs/{id}/resume)
+
+```
+{
+  "ok": true,
+  "runId": "...",
+  "status": "...",
+  "final_status": "...",
+  "artifacts": { ... }
+}
+```
+
 `final_status` values:
 
 - READY
@@ -204,6 +225,14 @@ Stored in `artifacts["needs_input"]` when the graph requires clarification:
 FINALIZE writes a user-facing response to `artifacts["assistant_message"]` for
 display in the UI or chat flow.
 
+## user_inputs
+
+Answers provided via resume are merged into `artifacts["user_inputs"]`:
+
+```
+{ "amount": "1", "token_out": "WETH" }
+```
+
 ## References
 
 Source files:
@@ -217,4 +246,5 @@ Source files:
 ## Change log
 
 - 2026-01-14: Add final_status/current_step and needs_input contracts.
+- 2026-01-15: Add resume request/response and user_inputs.
 

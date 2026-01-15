@@ -33,6 +33,7 @@ artifacts with maximum clarity and minimal build effort.
 #### Run Controls (visible only if run exists)
 - `run_id` (read-only)
 - Buttons: `Refresh run`, `Approve`, `Execute`
+- If `status=PAUSED` and `final_status=NEEDS_INPUT`, show `Resume` button
 
 ### Main Area Tabs
 
@@ -40,6 +41,8 @@ artifacts with maximum clarity and minimal build effort.
 - User + assistant message bubbles.
 - If `mode=CLARIFY`: render questions as buttons + free text reply.
 - Router card: `mode`, `intent_type`, `missing_slots` (chips).
+ - If `final_status=NEEDS_INPUT`, render `artifacts.needs_input.questions` and
+   a small form to post `/resume`.
 
 #### Tab 2 - Run Timeline
 - Vertical list or table of steps.
@@ -80,6 +83,7 @@ These call the same tool endpoints used by chat.
 
 - `POST /v1/chat/route`
 - `GET /v1/runs/{id}?includeArtifacts=true`
+- `POST /v1/runs/{id}/resume`
 - `POST /v1/runs/{id}/approve`
 - `POST /v1/runs/{id}/execute`
 
@@ -97,4 +101,5 @@ Optional tools:
 ## Change log
 
 - 2026-01-14: Add final_status/PAUSED handling for UI banners.
+- 2026-01-15: Add resume UI elements and endpoint.
 

@@ -89,9 +89,9 @@ uses tools for queries and only starts a run when the intent is actionable.
 - `POST /v1/runs/{id}/execute`
 - `GET /v1/runs/{id}?includeArtifacts=true`
 
-### Proposed (for graph clarification)
+### Graph clarification (run resume)
 
-- `POST /v1/runs/{id}/resume` (planned)
+- `POST /v1/runs/{id}/resume`
   - input: answers map
   - resumes from needs_input
 
@@ -137,7 +137,7 @@ Run status handling:
 
 1) Run starts, planner detects missing required fields
 2) Run stops with `final_status=NEEDS_INPUT` (status `PAUSED`) and questions
-3) FE asks user, then calls `/resume` (planned)
+3) FE asks user, then calls `/resume`
 4) Run resumes from the specified `resume_from` node
 
 ## Notes
@@ -151,3 +151,4 @@ Run status handling:
 ## Change log
 
 - 2026-01-14: Align needs_input shape and final_status-based UI mapping.
+- 2026-01-15: Mark /resume as implemented.

@@ -52,6 +52,7 @@ POST /v1/runs/{id}/start
   -> Graph executes nodes in order
   -> Artifacts and timeline produced
   -> Status and final_status set by runs_service
+  -> If missing inputs are detected, run pauses with NEEDS_INPUT
 ```
 
 ## Node Order (Current)
@@ -107,6 +108,7 @@ POST /v1/runs/{id}/start
 - `assistant_message`
 - `final_status_suggested`
 - `timeline`
+- `user_inputs`
 
 ## Timeline
 
@@ -161,6 +163,22 @@ When run is `AWAITING_APPROVAL`:
 3) Backend returns `tx_requests`
 4) Frontend signs via wallet
 
+## Resume Flow (NEEDS_INPUT)
+
+1) Run ends with `status=PAUSED` and `final_status=NEEDS_INPUT`.
+2) UI collects answers from the user.
+3) UI calls `POST /v1/runs/{id}/resume` with an `answers` map.
+4) Service loads the checkpoint, merges `answers` into `artifacts.user_inputs`,
+   clears `needs_input`, and re-runs the graph.
+
+Note: `needs_input.resume_from` is recorded for future use; the current resume
+implementation restarts the graph with the restored state.
+
+## Checkpointing
+
+- Graph checkpoints are stored per run with `thread_id = run_id`.
+- Resume fails with 409 when no checkpoint exists (run never started).
+
 ## References
 
 - `docs/project/06-data-models.md`
@@ -169,4 +187,5 @@ When run is `AWAITING_APPROVAL`:
 ## Change log
 
 - 2026-01-14: Add final_status mapping, PRECHECK/CLARIFY, and current_step.
+- 2026-01-15: Add resume flow and checkpointing notes.
 

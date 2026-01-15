@@ -84,6 +84,8 @@ FastAPI
    - CLARIFY (if `needs_input` is set)
    - FINALIZE
 4) UI shows timeline + artifacts, asks for approval
+4a) If `final_status == NEEDS_INPUT`, UI collects answers and calls
+    `POST /v1/runs/{id}/resume`
 5) POST /v1/runs/{id}/approve
 6) POST /v1/runs/{id}/execute (tx_requests returned)
 7) Frontend signs/sends txs and reports via /tx_submitted
@@ -109,6 +111,7 @@ Run status handling:
 
 - Use `final_status` for UI decisions (READY/NEEDS_INPUT/BLOCKED/FAILED/NOOP)
 - AWAITING_APPROVAL -> show tx_requests + approve (only when `final_status == READY`)
+- PAUSED + NEEDS_INPUT -> render questions and resume flow
 - BLOCKED -> show reasons
 
 ## Safety Guarantees
@@ -140,3 +143,4 @@ Run status handling:
 ## Change log
 
 - 2026-01-14: Add PRECHECK/CLARIFY and final_status gating notes.
+- 2026-01-15: Add resume step for NEEDS_INPUT.

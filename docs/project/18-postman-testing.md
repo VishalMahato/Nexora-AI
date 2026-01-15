@@ -120,6 +120,28 @@ Expected response (core fields):
 }
 ```
 
+### POST `{{BASE_URL}}/v1/runs/{{RUN_ID}}/resume`
+
+Request body:
+
+```json
+{
+  "answers": { "amount": "1", "token_out": "WETH" },
+  "metadata": { "source": "postman" }
+}
+```
+
+Expected response:
+
+```json
+{ "ok": true, "runId": "uuid", "status": "RUNNING", "final_status": "NEEDS_INPUT", "artifacts": { ... } }
+```
+
+Guards:
+
+- Requires `status == PAUSED` and `final_status == NEEDS_INPUT`.
+- Returns 409 if no checkpoint exists.
+
 ### GET `{{BASE_URL}}/v1/runs/{{RUN_ID}}?includeArtifacts=true`
 
 Expected response:
@@ -250,3 +272,4 @@ Expected response:
 
 - 2026-01-11: Initial version for Postman + SSE testing.
 - 2026-01-14: Add final_status/current_step and PAUSED handling.
+- 2026-01-15: Add resume endpoint example.
