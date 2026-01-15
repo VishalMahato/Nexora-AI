@@ -22,18 +22,13 @@ def test_needs_input_routes_to_clarify_and_finalize():
             status=RunStatus.RUNNING,
             chain_id=run.chain_id,
             wallet_address=run.wallet_address,
-            artifacts={
-                "needs_input": {
-                    "questions": [],
-                    "missing": ["token_out"],
-                    "resume_from": "PLAN_TX",
-                }
-            },
+            artifacts={},
         )
 
         result = run_graph(db, state)
         needs = result.artifacts.get("needs_input") or {}
         assert needs.get("questions")
+        assert "token_out" in needs.get("missing", [])
         assert "assistant_message" in result.artifacts
         assert "token" in result.artifacts["assistant_message"].lower()
     finally:
