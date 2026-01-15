@@ -70,7 +70,7 @@ Flow 3 - Clarification
 
 - Missing slots trigger follow-up questions
 - Only after slots are filled is a run created
-- Optional: run can pause in NEEDS_INPUT
+- Run can pause in NEEDS_INPUT and be resumed with `/v1/runs/{id}/resume`
 
 ## State Machine (Frontend)
 
@@ -108,6 +108,7 @@ Run statuses map:
 - Runs:
   - POST /v1/runs
   - POST /v1/runs/{id}/start
+  - POST /v1/runs/{id}/resume
   - GET /v1/runs/{id}?includeArtifacts=true
 - Execution tracking (F25):
   - POST /v1/runs/{id}/tx_submitted
@@ -147,3 +148,4 @@ Run statuses map:
 ## Change log
 
 - 2026-01-14: Add PRECHECK/CLARIFY and final_status-based UI mapping.
+- 2026-01-15: Add resume endpoint to clarification flow.

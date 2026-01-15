@@ -68,9 +68,11 @@ User
 4) UI calls `POST /v1/runs/{id}/start`.
 5) Graph executes and returns artifacts.
 6) UI shows timeline and checks `final_status`.
-7) UI calls `POST /v1/runs/{id}/approve`.
-8) UI calls `POST /v1/runs/{id}/execute` to get tx_requests.
-9) UI signs via wallet (frontend).
+7) If `final_status == NEEDS_INPUT`, UI collects answers and calls
+   `POST /v1/runs/{id}/resume`.
+8) UI calls `POST /v1/runs/{id}/approve`.
+9) UI calls `POST /v1/runs/{id}/execute` to get tx_requests.
+10) UI signs via wallet (frontend).
 
 ## Data Flow (Query)
 
@@ -101,4 +103,5 @@ User
 ## Change log
 
 - 2026-01-14: Document final_status gating in run flow.
+- 2026-01-15: Add resume step for NEEDS_INPUT flows.
 

@@ -19,7 +19,11 @@
 - Judge: LLM reviewer that produces PASS/NEEDS_REWORK/BLOCK.
 - needs_input: Artifact contract that captures missing fields and questions.
 - PRECHECK: Graph node that performs cheap validation before RPC.
+- resume: Run continuation endpoint (`POST /v1/runs/{id}/resume`) for NEEDS_INPUT.
+- checkpoint: Persisted graph state keyed by `thread_id = run_id`.
+- user_inputs: Artifact map that stores answers merged during resume.
 
 ## Change log
 
 - 2026-01-14: Add final_status, PAUSED, needs_input, PRECHECK.
+- 2026-01-15: Add resume, checkpoint, and user_inputs.

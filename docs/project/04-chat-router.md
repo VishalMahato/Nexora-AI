@@ -84,6 +84,14 @@ When required fields are missing:
 
 The next message attempts to fill missing slots using the classifier.
 
+## Clarify vs Run Resume
+
+Chat CLARIFY happens before a run is created. Run-level `needs_input` happens
+inside the graph after a run has started.
+
+- Chat CLARIFY -> respond with another `/v1/chat/route` message.
+- Run NEEDS_INPUT -> call `POST /v1/runs/{id}/resume` with answers.
+
 ## Response Fields
 
 `ChatRouteResponse` includes:
@@ -139,4 +147,5 @@ CLARIFY (missing wallet):
 ## Change log
 
 - 2026-01-14: Add note about final_status/current_step usage.
+- 2026-01-15: Clarify chat CLARIFY vs run resume.
 

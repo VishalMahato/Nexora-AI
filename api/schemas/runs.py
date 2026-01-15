@@ -33,6 +33,19 @@ class RunCreateResponse(BaseModel):
     status: str
 
 
+class RunResumeRequest(BaseModel):
+    answers: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class RunResumeResponse(BaseModel):
+    ok: bool
+    runId: UUID
+    status: str
+    final_status: str | None = None
+    artifacts: dict[str, Any] | None = None
+
+
 class RunResponse(BaseModel):
     id: UUID
     intent: str
