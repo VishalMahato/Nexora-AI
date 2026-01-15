@@ -7,6 +7,7 @@ from langgraph.graph import StateGraph, END
 from sqlalchemy.orm import Session
 
 from graph.state import RunState
+from graph.checkpointing import get_checkpointer
 from graph.nodes import (
     input_normalize,
     precheck,
@@ -182,12 +183,12 @@ def _langsmith_callbacks() -> Optional[List[Any]]:
 
 def run_graph(db: Session, state: RunState) -> RunState:
     graph = build_graph()
-    app = graph.compile()
+    app = graph.compile(checkpointer=get_checkpointer())
 
     callbacks = _langsmith_callbacks()
 
     config: dict[str, Any] = {
-        "configurable": {"db": db},
+        "configurable": {"db": db, "thread_id": str(state.run_id)},
         "tags": ["nexora", "langgraph"],
         "metadata": {"run_id": str(state.run_id)},
     }
