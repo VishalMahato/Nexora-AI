@@ -13,6 +13,7 @@ LLM is used for:
 - Planner (PLAN_TX)
 - Judge agent (JUDGE_AGENT)
 - Repair planner (optional)
+- Finalize response composer (FINALIZE)
 - Chat response polishing (assistant_message rewrite)
 
 All LLM outputs are JSON-only and validated.
@@ -112,6 +113,26 @@ Input includes:
 
 Output matches planner contract.
 
+## Finalize Prompt
+
+File: `llm/prompts.py`
+
+Input includes a compact `finalize_input` view of artifacts.
+
+Output JSON:
+
+```
+{
+  "assistant_message": "...",
+  "final_status_suggested": "READY|NEEDS_INPUT|BLOCKED|FAILED|NOOP"
+}
+```
+
+Notes:
+
+- `final_status_suggested` is a hint only; service resolves final_status.
+- If the LLM fails, FINALIZE falls back to deterministic templates.
+
 ## Temperature Settings
 
 Config (see `app/config.py`):
@@ -131,4 +152,8 @@ If LLM output is invalid:
 - Fallback to safe CLARIFY (chat)
 - Fallback to noop plan (planner)
 - WARN and require manual review (judge)
+
+## Change log
+
+- 2026-01-14: Document finalize prompt contract.
 

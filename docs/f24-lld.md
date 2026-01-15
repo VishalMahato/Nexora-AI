@@ -46,25 +46,20 @@ uses tools for queries and only starts a run when the intent is actionable.
     "chain_id": 1,
     "wallet_address": "0x..."
   },
-  "missing_fields": [],
+  "missing_slots": [],
   "run_intent": "swap 1 usdc to weth",
   "confidence": 0.88
 }
 ```
 
-### NeedsInput (run artifact, proposed)
+### needs_input (run artifact)
 
 ```json
 {
-  "status": "NEEDS_INPUT",
-  "questions": [
-    {
-      "id": "amount_in",
-      "field": "amount_in",
-      "question": "How much USDC do you want to swap?",
-      "choices": null
-    }
-  ]
+  "questions": ["How much USDC do you want to swap?"],
+  "missing": ["amount_in"],
+  "resume_from": "PLAN_TX",
+  "data": {}
 }
 ```
 
@@ -96,9 +91,9 @@ uses tools for queries and only starts a run when the intent is actionable.
 
 ### Proposed (for graph clarification)
 
-- `POST /v1/runs/{id}/provide_input`
+- `POST /v1/runs/{id}/resume` (planned)
   - input: answers map
-  - resumes from NEEDS_INPUT
+  - resumes from needs_input
 
 ## State Machine (Frontend)
 
@@ -113,8 +108,8 @@ Chat mode states:
 
 Run status handling:
 
-- NEEDS_INPUT -> render questions, call provide_input
-- AWAITING_APPROVAL -> show tx_requests + approve
+- PAUSED + final_status=NEEDS_INPUT -> render questions
+- AWAITING_APPROVAL + final_status=READY -> show tx_requests + approve
 - BLOCKED -> show reasons
 
 ## Flow: Query (Balance)
@@ -141,9 +136,9 @@ Run status handling:
 ## Flow: Graph Needs Input (Optional)
 
 1) Run starts, planner detects missing required fields
-2) Run stops with NEEDS_INPUT and questions
-3) FE asks user, then calls `provide_input`
-4) Run resumes from next node
+2) Run stops with `final_status=NEEDS_INPUT` (status `PAUSED`) and questions
+3) FE asks user, then calls `/resume` (planned)
+4) Run resumes from the specified `resume_from` node
 
 ## Notes
 
@@ -151,4 +146,8 @@ Run status handling:
 - Chat LLM can wrap the Runs API as one tool call named `execute_action_run`.
 - All query tools should be fast and not allocate run_id.
 - The conversational agent should treat all Run endpoints as tools.
-- The run can pause in NEEDS_INPUT if it finds missing slots after start.
+- The run can pause with `final_status=NEEDS_INPUT` (status `PAUSED`) if it finds missing slots after start.
+
+## Change log
+
+- 2026-01-14: Align needs_input shape and final_status-based UI mapping.

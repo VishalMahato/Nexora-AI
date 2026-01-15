@@ -114,7 +114,8 @@ Expected response (core fields):
 {
   "ok": true,
   "runId": "uuid",
-  "status": "AWAITING_APPROVAL|BLOCKED",
+  "status": "AWAITING_APPROVAL|PAUSED|BLOCKED|FAILED",
+  "final_status": "READY|NEEDS_INPUT|NOOP|BLOCKED|FAILED",
   "artifacts": { ... }
 }
 ```
@@ -128,6 +129,8 @@ Expected response:
   "run": {
     "id": "uuid",
     "status": "AWAITING_APPROVAL",
+    "current_step": "PLAN_TX",
+    "final_status": "READY",
     "artifacts": { ... }
   }
 }
@@ -160,6 +163,10 @@ Expected response:
 ```json
 { "ok": true, "runId": "uuid", "status": "APPROVED_READY" }
 ```
+
+Guard:
+
+- Approval/execution requires `final_status == READY` (otherwise 409).
 
 ### POST `{{BASE_URL}}/v1/runs/{{RUN_ID}}/execute`
 
@@ -242,3 +249,4 @@ Expected response:
 ## Change log
 
 - 2026-01-11: Initial version for Postman + SSE testing.
+- 2026-01-14: Add final_status/current_step and PAUSED handling.

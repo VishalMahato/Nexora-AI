@@ -5,6 +5,8 @@
 - CLARIFY: Chat mode that asks for missing fields.
 - GENERAL: Chat mode for smalltalk and general questions.
 - Run: A single execution of the LangGraph pipeline.
+- final_status: Outcome derived from artifacts (READY/NEEDS_INPUT/BLOCKED/FAILED/NOOP).
+- PAUSED: Run status used for NEEDS_INPUT/NOOP outcomes.
 - tx_plan: Planner output describing actions and candidates.
 - tx_requests: Transaction requests returned for frontend signing.
 - AgentResult: Standard agent output contract with explanation.
@@ -15,3 +17,9 @@
 - assumed_success: Simulation flag when a swap is assumed safe after approve.
 - Allowlist: Configured list of allowed tokens and routers.
 - Judge: LLM reviewer that produces PASS/NEEDS_REWORK/BLOCK.
+- needs_input: Artifact contract that captures missing fields and questions.
+- PRECHECK: Graph node that performs cheap validation before RPC.
+
+## Change log
+
+- 2026-01-14: Add final_status, PAUSED, needs_input, PRECHECK.

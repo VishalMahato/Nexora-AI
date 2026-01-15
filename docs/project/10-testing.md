@@ -52,4 +52,10 @@ pytest tests/test_chat_query_tools.py
 
 - Long-running RPC calls can cause timeouts in tests.
 - Ensure `LLM_ENABLED` is false in tests unless explicitly mocked.
+- If using Supabase for `DATABASE_URL`, expect occasional connection resets;
+  local Postgres is more reliable for full test runs.
+
+## Change log
+
+- 2026-01-14: Note Supabase connection resets in tests.
 

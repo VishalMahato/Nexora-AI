@@ -101,7 +101,7 @@ POST /v1/runs/{run_id}/start
 Expected response:
 
 ```json
-{ "ok": true, "runId": "uuid", "status": "AWAITING_APPROVAL|BLOCKED|FAILED", "artifacts": { ... } }
+{ "ok": true, "runId": "uuid", "status": "AWAITING_APPROVAL|PAUSED|BLOCKED|FAILED", "final_status": "READY|NEEDS_INPUT|NOOP|BLOCKED|FAILED", "artifacts": { ... } }
 ```
 
 ### 2.3 Subscribe to run events (SSE)
@@ -128,7 +128,7 @@ current synchronous implementation, you may see only replayed events.
 ### 2.4 Fetch artifacts after the run is finalized
 
 When you receive a `run_status` event that is terminal for the graph (typically
-`AWAITING_APPROVAL`, `BLOCKED`, or `FAILED`), fetch full artifacts:
+`AWAITING_APPROVAL`, `PAUSED`, `BLOCKED`, or `FAILED`), fetch full artifacts:
 
 ```
 GET /v1/runs/{run_id}?includeArtifacts=true
@@ -142,6 +142,8 @@ Use the response to render:
 - `artifacts.security_result`
 - `artifacts.judge_result`
 - `artifacts.decision`
+- `artifacts.assistant_message`
+- `current_step` and `final_status` for UI state decisions
 
 ## Step 3: Approval and execution
 
@@ -245,3 +247,4 @@ Use this for UI typing effects; it does not replace run events.
 ## Change log
 
 - 2026-01-13: Initial version.
+- 2026-01-14: Add final_status/current_step and PAUSED handling.

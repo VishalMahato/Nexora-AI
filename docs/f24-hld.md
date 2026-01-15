@@ -15,7 +15,7 @@ Separate the conversational LLM from the execution run:
 - LangGraph runs only when the intent is actionable and needs the audit trail.
 
 This keeps chat fast and avoids run_id spam, while still allowing the run to
-pause for missing inputs.
+pause for missing inputs (`final_status=NEEDS_INPUT`, status `PAUSED`).
 
 Note: the conversational layer is not the F24 feature itself; F24 refers to
 sequential simulation. This HLD captures the overall system after F24.
@@ -36,9 +36,9 @@ sequential simulation. This HLD captures the overall system after F24.
 
 3) Run Executor (FastAPI + LangGraph)
    - Deterministic pipeline:
-     INPUT_NORMALIZE -> WALLET_SNAPSHOT -> PLAN_TX -> BUILD_TXS
+     INPUT_NORMALIZE -> PRECHECK -> WALLET_SNAPSHOT -> PLAN_TX -> BUILD_TXS
      -> SIMULATE_TXS -> POLICY_EVAL -> SECURITY_EVAL -> JUDGE_AGENT
-     -> REPAIR_ROUTER (bounded) -> FINALIZE
+     -> REPAIR_ROUTER (bounded) -> CLARIFY -> FINALIZE
    - Produces artifacts + timeline for UI
 
 4) Read-only Tool APIs (no run)
@@ -85,8 +85,8 @@ Chat modes:
 
 Run statuses map:
 
-- NEEDS_INPUT -> render questions, call provide_input
-- AWAITING_APPROVAL -> show tx_requests + approve
+- PAUSED + final_status=NEEDS_INPUT -> render questions
+- AWAITING_APPROVAL + final_status=READY -> show tx_requests + approve
 - BLOCKED -> show reasons
 
 ## Safety Model (Demo-safe)
@@ -143,3 +143,7 @@ Run statuses map:
 
 - No state override for allowances; assumptions are explicit and WARN-only.
 - True stateful simulation (approve then swap with allowance applied) is deferred.
+
+## Change log
+
+- 2026-01-14: Add PRECHECK/CLARIFY and final_status-based UI mapping.

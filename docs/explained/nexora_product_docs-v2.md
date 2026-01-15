@@ -1,5 +1,10 @@
 # Nexora AI - Product Documentation
 
+Note: For current run pipeline, status mapping, and API contracts, refer to:
+- docs/project/03-run-lifecycle.md
+- docs/project/05-api-reference.md
+- docs/project/06-data-models.md
+
 ## Executive Summary
 
 Nexora AI is a blockchain intent execution system that interprets natural language user requests and orchestrates safe, policy-compliant smart contract interactions. The system features enterprise-grade auditability, FSM-based execution flow, real-time Web3 integration, and a comprehensive policy engine for risk management.

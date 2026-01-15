@@ -106,12 +106,17 @@
   Response:
 
   ```
-  { "ok": true, "runId": "...", "status": "...", "artifacts": { ... } }
+  { "ok": true, "runId": "...", "status": "...", "final_status": "...", "artifacts": { ... } }
   ```
 
   ### GET /v1/runs/{id}
 
   Fetches run metadata. Supports `includeArtifacts=true`.
+
+  Run payload includes:
+
+  - `current_step` (last STARTED step)
+  - `final_status` (READY/NEEDS_INPUT/BLOCKED/FAILED/NOOP)
 
   ### GET /v1/runs/{id}/status
 
@@ -142,6 +147,10 @@
 
   Moves run to `APPROVED_READY`.
 
+  Guard:
+
+  - Requires `final_status == READY` (otherwise 409).
+
   Request:
 
   ```
@@ -151,6 +160,10 @@
   ### POST /v1/runs/{id}/execute
 
   Returns `tx_requests` for frontend execution.
+
+  Guard:
+
+  - Requires `final_status == READY` (otherwise 409).
 
   ### GET /v1/runs/{id}/tool-calls
 
@@ -181,4 +194,8 @@
   ## References
 
   - `docs/project/06-data-models.md`
+
+  ## Change log
+
+  - 2026-01-14: Document final_status/current_step and approval guards.
 
