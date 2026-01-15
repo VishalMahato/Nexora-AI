@@ -94,7 +94,33 @@ ALLOWLISTED_ROUTERS = {
 - Keep allowlists minimal for demo safety.
 - Changes to allowlists affect policy rules and compilation.
 
+## Go-Live Defaults and Risk Notes
+
+Recommended safe defaults for production-like environments:
+
+- `ALLOWLIST_TO_ALL=false` (never bypass target allowlist checks).
+- `ALLOWLIST_TO` set to explicit target addresses (avoid empty lists).
+- `ALLOWLISTED_TOKENS` and `ALLOWLISTED_ROUTERS` only include supported assets.
+- `RPC_URLS` includes only chains you allow in the allowlists.
+- `DEX_KIND=uniswap_v2` (only supported value today).
+- `DEFAULT_SLIPPAGE_BPS` within [`MIN_SLIPPAGE_BPS`, `MAX_SLIPPAGE_BPS`].
+- `DEFAULT_DEADLINE_SECONDS=1200` unless you have a reason to change it.
+- `LLM_ENABLED=false` for strict determinism; if enabled, keep
+  `LLM_TEMPERATURE=0.0` and `LLM_CHAT_TEMPERATURE<=0.5`.
+
+Impact and failure modes to watch:
+
+- `ALLOWLIST_TO` empty or invalid JSON skips the target allowlist check.
+- `ALLOWLIST_TO_ALL=true` allows any transfer target (dev only).
+- Missing tokens/routers in allowlists cause policy BLOCK for swaps.
+- `RPC_URLS` missing a chain causes UnsupportedChain errors at runtime.
+- `DEX_KIND` values other than `uniswap_v2` raise errors in `BUILD_TXS`.
+- Slippage defaults outside bounds cause policy BLOCK.
+- Enabling LLM without keys or with high temperature can cause plan instability
+  or fallbacks.
+
 ## Change log
 
 - 2026-01-14: Clarify target allowlist format and bypass flag.
+- 2026-01-15: Add go-live defaults and risk notes.
 
