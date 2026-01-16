@@ -65,7 +65,7 @@ Out of scope:
 - Planner and policy system with AgentResult contracts.
 - Artifacts timeline for UI.
 - F23 DeFi compiler (approve + swap).
-- F24 sequential simulation with assumed success (guarded).
+- Sequential simulation with assumed success (guarded).
 - Chat router and query tools (snapshot, balance, allowlists).
 
 ## Non-Goals

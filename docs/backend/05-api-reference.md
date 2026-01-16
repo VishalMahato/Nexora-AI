@@ -218,7 +218,7 @@
 
   ## References
 
-  - `docs/project/06-data-models.md`
+  - `docs/backend/06-data-models.md`
 
   ## Change log
 

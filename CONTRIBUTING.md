@@ -54,7 +54,7 @@ Allowlists (safety critical):
 - `ALLOWLISTED_TOKENS`
 - `ALLOWLISTED_ROUTERS`
 
-See `docs/project/08-config-and-env.md` for formats and defaults.
+See `docs/config/08-config-and-env.md` for formats and defaults.
 
 ## Codebase Map (what does what)
 
@@ -103,8 +103,8 @@ Safety invariants (do not break):
 - Simulation is required before approval.
 - Human approval is mandatory.
 
-Reference docs: `docs/project/03-run-lifecycle.md`,
-`docs/project/04-chat-router.md`, `docs/project/12-security-safety.md`.
+Reference docs: `docs/architecture/03-run-lifecycle.md`,
+`docs/backend/04-chat-router.md`, `docs/security/12-security-safety.md`.
 
 ## Tests
 
@@ -116,7 +116,7 @@ pytest
 Note: LLM and RPC calls are mocked in unit tests. Set `LLM_ENABLED=false`
 unless explicitly mocked.
 
-More details: `docs/project/10-testing.md`.
+More details: `docs/tests/10-testing.md`.
 
 ## Git Workflow
 
@@ -131,22 +131,23 @@ See `docs/process/git-workflow.md` for the naming conventions.
 - Simulation uses guarded assumptions for approvals in stateless `eth_call`.
 - Only one ACTION intent supported per conversation.
 
-Details: `docs/project/14-known-issues.md`.
+Details: `docs/ops/14-known-issues.md`.
 
 ## Where to Learn Next (recommended order)
 
-Start with the doc hub and then follow the reading order:
-- `docs/project/README.md`
-- `docs/project/00-product-brief.md`
-- `docs/project/01-architecture-overview.md`
-- `docs/project/02-backend-architecture.md`
-- `docs/project/05-api-reference.md`
-- `docs/project/06-data-models.md`
-- `docs/project/07-llm-prompts.md`
-- `docs/project/11-ops-deploy.md`
-- `docs/project/13-frontend-integration.md`
+Docs are now categorized under `docs/` (design, product, architecture, backend,
+config, setup, security, ops, UI, tests). Start with `docs/README.md` for the
+current index, then follow the reading order:
+- `docs/README.md` (categorized doc index)
+- `docs/product/00-product-brief.md`
+- `docs/architecture/01-architecture-overview.md`
+- `docs/architecture/02-backend-architecture.md`
+- `docs/backend/05-api-reference.md`
+- `docs/backend/06-data-models.md`
+- `docs/backend/07-llm-prompts.md`
+- `docs/ops/11-ops-deploy.md`
+- `docs/ui/13-frontend-integration.md`
 
 Supplemental:
-- `docs/architecture-overview.md`
-- `docs/frontend_integration.md`
-- `docs/ui-demo-spec.md`
+- `docs/design/architecture-overview.md`
+- `docs/design/ui-demo-spec.md`

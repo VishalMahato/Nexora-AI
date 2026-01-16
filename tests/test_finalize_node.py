@@ -49,6 +49,25 @@ def test_finalize_needs_input_includes_questions():
     assert "Which token are you swapping from?" in message
 
 
+def test_finalize_sets_consensus_summary():
+    state = _run_finalize(
+        artifacts={
+            "normalized_intent": "swap 1 usdc to weth",
+            "final_status": "READY",
+            "tx_plan": {"type": "plan"},
+            "simulation": {"status": "completed", "summary": {"num_success": 1, "num_failed": 0}},
+            "policy_result": {"checks": []},
+            "decision": {"action": "NEEDS_APPROVAL", "summary": "Policy checks completed."},
+            "security_result": {"status": "OK", "explanation": {"summary": "Security checks completed."}},
+            "judge_result": {"output": {"verdict": "PASS", "reasoning_summary": "Looks good."}},
+        }
+    )
+    consensus = state.artifacts.get("consensus_summary")
+    assert consensus is not None
+    assert consensus["verdict"] == "READY"
+    assert len(consensus.get("signals", [])) == 4
+
+
 @pytest.mark.use_llm
 def test_finalize_llm_failure_falls_back(monkeypatch):
     monkeypatch.setenv("LLM_ENABLED", "true")

@@ -150,8 +150,8 @@ CLARIFY (missing wallet):
 
 ## References
 
-- `docs/project/05-api-reference.md`
-- `docs/project/06-data-models.md`
+- `docs/backend/05-api-reference.md`
+- `docs/backend/06-data-models.md`
 
 ## Change log
 

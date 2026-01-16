@@ -26,6 +26,7 @@ Explain how the UI should call backend endpoints and render results.
 - Use `current_step` for progress indicators.
 - Display `tx_requests` for approval.
 - Use `judge_result` and `security_result` for explainability sections.
+- Render `consensus_summary` as a multi-agent consensus card (optional but recommended).
 - If `simulation` includes `assumed_success`, show a warning badge.
 - Use `artifacts.assistant_message` for the final user-facing summary.
 
@@ -54,7 +55,7 @@ When run status is:
 3) UI posts answers to `POST /v1/runs/{id}/resume`.
 4) UI re-opens `/v1/runs/{id}/events` and waits for the next terminal status.
 
-For detailed UI guidance, see `docs/project/20-checkpointing-ui.md`.
+For detailed UI guidance, see `docs/ui/20-checkpointing-ui.md`.
 
 ## Error Handling
 
@@ -74,3 +75,4 @@ For detailed UI guidance, see `docs/project/20-checkpointing-ui.md`.
 
 - 2026-01-14: Add guidance for final_status/current_step and PAUSED.
 - 2026-01-15: Add resume flow and checkpointing UI reference.
+- 2026-01-15: Add consensus_summary rendering guidance.

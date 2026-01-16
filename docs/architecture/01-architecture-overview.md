@@ -96,9 +96,9 @@ User
 
 ## References
 
-- `docs/project/03-run-lifecycle.md`
-- `docs/project/04-chat-router.md`
-- `docs/project/05-api-reference.md`
+- `docs/architecture/03-run-lifecycle.md`
+- `docs/backend/04-chat-router.md`
+- `docs/backend/05-api-reference.md`
 
 ## Change log
 

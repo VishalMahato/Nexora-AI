@@ -300,7 +300,8 @@ def _missing_action_slots(
             missing.append("token_in")
         if not slots.get("token_out"):
             missing.append("token_out")
-        if not slots.get("amount_in"):
+        amount = slots.get("amount_in") or slots.get("amount")
+        if not amount:
             missing.append("amount_in")
     return list(dict.fromkeys(missing))
 

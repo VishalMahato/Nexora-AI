@@ -107,6 +107,7 @@ POST /v1/runs/{id}/start
 - `judge_result`
 - `assistant_message`
 - `final_status_suggested`
+- `consensus_summary`
 - `timeline`
 - `user_inputs`
 
@@ -181,11 +182,12 @@ implementation restarts the graph with the restored state.
 
 ## References
 
-- `docs/project/06-data-models.md`
-- `docs/project/12-security-safety.md`
+- `docs/backend/06-data-models.md`
+- `docs/security/12-security-safety.md`
 
 ## Change log
 
 - 2026-01-14: Add final_status mapping, PRECHECK/CLARIFY, and current_step.
 - 2026-01-15: Add resume flow and checkpointing notes.
+- 2026-01-15: Add multi-agent consensus summary artifact.
 
