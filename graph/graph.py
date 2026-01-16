@@ -84,9 +84,24 @@ def build_graph() -> StateGraph:
             "PLAN_TX": "PLAN_TX",
         },
     )
+    def route_after_plan_tx(state: RunState) -> str:
+        routed = route_post_step(state, default_next="BUILD_TXS")
+        if routed != "BUILD_TXS":
+            return routed
+        artifacts = state.artifacts or {}
+        tx_plan = artifacts.get("tx_plan") or {}
+        if isinstance(tx_plan, dict):
+            if tx_plan.get("type") == "noop":
+                return "FINALIZE"
+            actions = tx_plan.get("actions") or []
+            candidates = tx_plan.get("candidates") or []
+            if not actions and not candidates:
+                return "FINALIZE"
+        return "BUILD_TXS"
+
     graph.add_conditional_edges(
         "PLAN_TX",
-        route_or_finalize("BUILD_TXS"),
+        route_after_plan_tx,
         {
             "CLARIFY": "CLARIFY",
             "FINALIZE": "FINALIZE",

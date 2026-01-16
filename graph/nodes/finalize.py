@@ -4,9 +4,7 @@ from langchain_core.runnables import RunnableConfig
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.contracts.agent_result import AgentResult, Explanation
 from db.repos.run_steps_repo import log_step
-from graph.artifacts import append_timeline_event, agent_result_to_timeline, put_artifact
 from graph.state import RunState
 from llm.client import LLMClient
 from llm.prompts import build_finalize_prompt
@@ -97,6 +95,21 @@ def _compact_simulation(simulation: dict | None) -> dict | None:
     }
 
 
+def _compact_tx_plan(tx_plan: dict | None) -> dict | None:
+    if not isinstance(tx_plan, dict):
+        return None
+    plan_type = tx_plan.get("type")
+    if isinstance(plan_type, str) and plan_type.lower() == "noop":
+        plan_type = "empty"
+    actions = tx_plan.get("actions") or []
+    candidates = tx_plan.get("candidates") or []
+    return {
+        "type": plan_type,
+        "action_count": len(actions) if isinstance(actions, list) else 0,
+        "candidate_count": len(candidates) if isinstance(candidates, list) else 0,
+    }
+
+
 def _compact_tx_requests(tx_requests: list | None) -> dict | None:
     if not isinstance(tx_requests, list):
         return None
@@ -110,6 +123,44 @@ def _compact_tx_requests(tx_requests: list | None) -> dict | None:
     else:
         first_summary = None
     return {"count": len(tx_requests), "first": first_summary}
+
+
+def _sanitize_reason(reason: str | None) -> str | None:
+    if not isinstance(reason, str):
+        return None
+    text = reason.strip()
+    if not text:
+        return None
+    text = text.replace("noop", "no actionable plan")
+    text = text.replace("no-op", "no actionable plan")
+    return text
+
+
+def _extract_block_reason(artifacts: dict) -> str | None:
+    decision = artifacts.get("decision") or {}
+    reasons = decision.get("reasons") or []
+    for item in reasons:
+        if isinstance(item, str) and item.strip():
+            return _sanitize_reason(item)
+
+    judge_output = (artifacts.get("judge_result") or {}).get("output") or {}
+    reasoning = judge_output.get("reasoning_summary")
+    if isinstance(reasoning, str) and reasoning.strip():
+        return _sanitize_reason(reasoning)
+    issues = judge_output.get("issues") or []
+    if isinstance(issues, list) and issues:
+        issue = issues[0] or {}
+        if isinstance(issue, dict):
+            message = issue.get("message") or issue.get("code")
+            if isinstance(message, str) and message.strip():
+                return _sanitize_reason(message)
+
+    security_result = artifacts.get("security_result") or {}
+    explanation = security_result.get("explanation") or {}
+    summary = explanation.get("summary")
+    if isinstance(summary, str) and summary.strip():
+        return _sanitize_reason(summary)
+    return None
 
 
 def _is_blocked(artifacts: dict) -> bool:
@@ -233,6 +284,8 @@ def _security_signal(artifacts: dict) -> dict:
 
 
 def _judge_signal(artifacts: dict) -> dict:
+    if "judge_result" not in artifacts:
+        return {"agent": "Judge", "status": "SKIPPED", "summary": "Judge step skipped."}
     judge_result = artifacts.get("judge_result") or {}
     output = judge_result.get("output") or {}
     verdict = (output.get("verdict") or "").upper()
@@ -282,6 +335,7 @@ def _fallback_assistant_message(finalize_input: dict) -> str:
     intent = finalize_input.get("normalized_intent") or "your request"
     needs_input = finalize_input.get("needs_input") or {}
     questions = needs_input.get("questions") or []
+    block_reason = finalize_input.get("block_reason")
     if status == "READY":
         return (
             "I prepared a safe transaction plan. Please review and approve to proceed."
@@ -293,15 +347,9 @@ def _fallback_assistant_message(finalize_input: dict) -> str:
             return f"I need a bit more detail:\n{lines}"
         return "I need a bit more detail before I can proceed. What would you like to do?"
     if status == "BLOCKED":
-        decision = finalize_input.get("decision") or {}
-        reason = None
-        for item in decision.get("reasons") or []:
-            if isinstance(item, str) and item.strip():
-                reason = item.strip()
-                break
-        if reason:
-            return f"I can't proceed: {reason}"
-        return "I can't proceed: the run was blocked by safety checks. Review the timeline for details."
+        if isinstance(block_reason, str) and block_reason.strip():
+            return f"I can't proceed yet: {block_reason.strip()}"
+        return "I can't proceed yet because this request needs more detail or failed safety checks."
     if status == "NOOP":
         return (
             "I couldn't identify an action to take. Tell me what you'd like to do, "
@@ -319,6 +367,15 @@ def _build_finalize_input(state: RunState) -> dict:
     tx_plan = artifacts.get("tx_plan") or {}
     tx_requests = artifacts.get("tx_requests") or []
     final_status = artifacts.get("final_status") or _resolve_final_status_suggested(artifacts)
+    skipped_steps = []
+    if "simulation" not in artifacts:
+        skipped_steps.append("SIMULATE_TXS")
+    if "policy_result" not in artifacts:
+        skipped_steps.append("POLICY_EVAL")
+    if "security_result" not in artifacts:
+        skipped_steps.append("SECURITY_EVAL")
+    if "judge_result" not in artifacts:
+        skipped_steps.append("JUDGE_AGENT")
     finalize_input = {
         "normalized_intent": artifacts.get("normalized_intent") or state.intent,
         "final_status": final_status,
@@ -326,17 +383,14 @@ def _build_finalize_input(state: RunState) -> dict:
         "wallet_address": _short_address(state.wallet_address),
         "needs_input": artifacts.get("needs_input"),
         "fatal_error": artifacts.get("fatal_error"),
+        "block_reason": _extract_block_reason(artifacts),
+        "skipped_steps": skipped_steps,
         "decision": _compact_decision(artifacts.get("decision")),
         "policy_result": _compact_policy(artifacts.get("policy_result")),
         "security_result": _compact_security(artifacts.get("security_result")),
         "judge_result": _compact_judge(artifacts.get("judge_result")),
         "simulation": _compact_simulation(artifacts.get("simulation")),
-        "tx_plan": {
-            "type": tx_plan.get("type"),
-            "reason": tx_plan.get("reason"),
-        }
-        if isinstance(tx_plan, dict)
-        else None,
+        "tx_plan": _compact_tx_plan(tx_plan),
         "tx_requests": _compact_tx_requests(tx_requests),
     }
     return finalize_input
@@ -384,32 +438,6 @@ def finalize(state: RunState, config: RunnableConfig) -> RunState:
         input={"artifacts_keys": sorted(list(state.artifacts.keys()))},
         agent="LangGraph",
     )
-
-    if "judge_result" not in state.artifacts:
-        judge_result = AgentResult(
-            agent="judge",
-            step_name="JUDGE_AGENT",
-            status="WARN",
-            output={
-                "verdict": "NEEDS_REWORK",
-                "reasoning_summary": "Judge result missing; manual review required.",
-                "issues": [],
-            },
-            explanation=Explanation(
-                summary="Judge result missing; manual review required.",
-                assumptions=[],
-                why_safe=[],
-                risks=[],
-                next_steps=[],
-            ),
-            confidence=None,
-            sources=["policy_result", "decision", "simulation"],
-            errors=None,
-        ).to_public_dict()
-        put_artifact(state, "judge_result", judge_result)
-        judge_event = agent_result_to_timeline(judge_result)
-        judge_event["attempt"] = state.attempt
-        append_timeline_event(state, judge_event)
 
     finalize_input = _build_finalize_input(state)
     assistant_message = None

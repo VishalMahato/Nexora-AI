@@ -449,6 +449,11 @@ def _finalize_response(
         "user_message": req.message,
         "status": status,
     }
+    if resp.classification:
+        context["reason"] = resp.classification.reason
+        context["missing_slots"] = resp.classification.missing_slots
+    if resp.questions:
+        context["questions"] = resp.questions
     resp.assistant_message = polish_assistant_message(resp.assistant_message, context=context)
     return resp
 
