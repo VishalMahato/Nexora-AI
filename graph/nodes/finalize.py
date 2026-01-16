@@ -153,6 +153,130 @@ def _resolve_final_status_suggested(artifacts: dict) -> str:
     return "READY"
 
 
+def _planner_signal(artifacts: dict) -> dict:
+    needs_input = artifacts.get("needs_input") or {}
+    missing = needs_input.get("missing") or []
+    if isinstance(missing, str):
+        missing = [missing]
+    questions = needs_input.get("questions") or []
+    tx_plan = artifacts.get("tx_plan") or {}
+    fatal_error = artifacts.get("fatal_error") or {}
+
+    status = "OK"
+    summary = "Plan created."
+
+    step = fatal_error.get("step") if isinstance(fatal_error, dict) else None
+    fatal_message = fatal_error.get("message") if isinstance(fatal_error, dict) else None
+    if fatal_message and step in {"PLAN_TX", "BUILD_TXS", "REPAIR_PLAN_TX"}:
+        status = "FAIL"
+        summary = fatal_message
+    elif missing or questions:
+        status = "WARN"
+        if missing:
+            summary = "Missing: " + ", ".join(str(m) for m in missing)
+        else:
+            summary = "Clarification required."
+    elif isinstance(tx_plan, dict) and tx_plan.get("type") == "noop":
+        status = "WARN"
+        reason = tx_plan.get("reason")
+        summary = reason if isinstance(reason, str) and reason.strip() else "No actionable plan."
+
+    planner_result = artifacts.get("planner_result") or {}
+    explanation = planner_result.get("explanation") or {}
+    planner_summary = explanation.get("summary")
+    if status == "OK" and isinstance(planner_summary, str) and planner_summary.strip():
+        summary = planner_summary.strip()
+
+    return {"agent": "Planner", "status": status, "summary": summary}
+
+
+def _policy_signal(artifacts: dict) -> dict:
+    decision = artifacts.get("decision") or {}
+    action = (decision.get("action") or "").upper()
+    compact = _compact_policy(artifacts.get("policy_result")) or {}
+    summary = decision.get("summary") or "Policy checks completed."
+
+    if action == "BLOCK":
+        status = "FAIL"
+        reasons = decision.get("reasons") or []
+        first_reason = next((r for r in reasons if isinstance(r, str) and r.strip()), None)
+        if first_reason:
+            summary = first_reason
+    else:
+        issues = compact.get("issues") or []
+        if issues:
+            status = "WARN"
+            issue = issues[0] or {}
+            issue_summary = issue.get("reason") or issue.get("title")
+            if isinstance(issue_summary, str) and issue_summary.strip():
+                summary = issue_summary
+        else:
+            status = "OK"
+
+    return {"agent": "Policy", "status": status, "summary": summary}
+
+
+def _security_signal(artifacts: dict) -> dict:
+    security_result = artifacts.get("security_result") or {}
+    status_raw = (security_result.get("status") or "").upper()
+    explanation = security_result.get("explanation") or {}
+    summary = explanation.get("summary") or "Security checks completed."
+
+    if status_raw == "BLOCK":
+        status = "FAIL"
+    elif status_raw == "WARN":
+        status = "WARN"
+    else:
+        status = "OK"
+
+    return {"agent": "Security", "status": status, "summary": summary}
+
+
+def _judge_signal(artifacts: dict) -> dict:
+    judge_result = artifacts.get("judge_result") or {}
+    output = judge_result.get("output") or {}
+    verdict = (output.get("verdict") or "").upper()
+    summary = output.get("reasoning_summary") or "Judge review completed."
+
+    if verdict == "BLOCK":
+        status = "FAIL"
+    elif verdict == "NEEDS_REWORK":
+        status = "WARN"
+    else:
+        status = "OK"
+
+    return {"agent": "Judge", "status": status, "summary": summary}
+
+
+def _consensus_next_ui(verdict: str) -> str:
+    verdict = (verdict or "").upper()
+    if verdict == "READY":
+        return "approve"
+    if verdict == "NEEDS_INPUT":
+        return "clarify"
+    return "explain"
+
+
+def _build_consensus_summary(artifacts: dict) -> dict:
+    verdict = artifacts.get("final_status")
+    if isinstance(verdict, str) and verdict.strip():
+        verdict_value = verdict.strip().upper()
+    else:
+        verdict_value = _resolve_final_status_suggested(artifacts)
+
+    return {
+        "title": "Multi-agent consensus",
+        "verdict": verdict_value,
+        "signals": [
+            _planner_signal(artifacts),
+            _policy_signal(artifacts),
+            _security_signal(artifacts),
+            _judge_signal(artifacts),
+        ],
+        "recommended_next_ui": _consensus_next_ui(verdict_value),
+    }
+
+
 def _fallback_assistant_message(finalize_input: dict) -> str:
     status = (finalize_input.get("final_status") or "FAILED").upper()
     intent = finalize_input.get("normalized_intent") or "your request"
@@ -194,9 +318,10 @@ def _build_finalize_input(state: RunState) -> dict:
     artifacts = state.artifacts
     tx_plan = artifacts.get("tx_plan") or {}
     tx_requests = artifacts.get("tx_requests") or []
+    final_status = artifacts.get("final_status") or _resolve_final_status_suggested(artifacts)
     finalize_input = {
         "normalized_intent": artifacts.get("normalized_intent") or state.intent,
-        "final_status": _resolve_final_status_suggested(artifacts),
+        "final_status": final_status,
         "chain_id": state.chain_id,
         "wallet_address": _short_address(state.wallet_address),
         "needs_input": artifacts.get("needs_input"),
@@ -317,6 +442,7 @@ def finalize(state: RunState, config: RunnableConfig) -> RunState:
         if not final_status_suggested:
             final_status_suggested = finalize_input.get("final_status")
 
+    state.artifacts["consensus_summary"] = _build_consensus_summary(state.artifacts)
     state.artifacts["assistant_message"] = assistant_message
     if final_status_suggested:
         state.artifacts["final_status_suggested"] = final_status_suggested
