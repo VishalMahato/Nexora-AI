@@ -225,6 +225,24 @@ Stored in `artifacts["needs_input"]` when the graph requires clarification:
 FINALIZE writes a user-facing response to `artifacts["assistant_message"]` for
 display in the UI or chat flow.
 
+## consensus_summary
+
+Coordinator-style summary of planner/policy/security/judge signals:
+
+```
+{
+  "title": "Multi-agent consensus",
+  "verdict": "READY|NEEDS_INPUT|BLOCKED|FAILED|NOOP",
+  "signals": [
+    { "agent": "Planner", "status": "OK|WARN|FAIL", "summary": "..." },
+    { "agent": "Policy", "status": "OK|WARN|FAIL", "summary": "..." },
+    { "agent": "Security", "status": "OK|WARN|FAIL", "summary": "..." },
+    { "agent": "Judge", "status": "OK|WARN|FAIL", "summary": "..." }
+  ],
+  "recommended_next_ui": "approve|clarify|explain"
+}
+```
+
 ## user_inputs
 
 Answers provided via resume are merged into `artifacts["user_inputs"]`:
@@ -247,4 +265,5 @@ Source files:
 
 - 2026-01-14: Add final_status/current_step and needs_input contracts.
 - 2026-01-15: Add resume request/response and user_inputs.
+- 2026-01-15: Add consensus_summary artifact schema.
 

@@ -1,9 +1,9 @@
-# Nexora Architecture Overview (Post-F24)
+# Nexora Architecture Overview
 
 ## Purpose
 
 Give a brief, end-to-end view of the system architecture, backend layout, and
-overall request flow after F24.
+overall request flow.
 
 ## High-Level System
 

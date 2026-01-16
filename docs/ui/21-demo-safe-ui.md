@@ -122,12 +122,23 @@ Use these strings directly in the UI. Keep them short and consistent.
 - `FAILED` -> show failed prompt + Retry button.
 - `AWAITING_APPROVAL + READY` -> show Execute button after approval.
 
+## Multi-Agent Consensus Card
+
+Display `artifacts.consensus_summary` as a dedicated card:
+
+- Title: "Multi-agent consensus"
+- Verdict: READY/NEEDS_INPUT/BLOCKED/FAILED/NOOP
+- Signals: Planner, Policy, Security, Judge (status + summary)
+
+This is the main demo proof-point for “multi-agent coordination.”
+
 ## References
 
-- `docs/project/08-config-and-env.md`
-- `docs/project/13-frontend-integration.md`
-- `docs/project/20-checkpointing-ui.md`
+- `docs/config/08-config-and-env.md`
+- `docs/ui/13-frontend-integration.md`
+- `docs/ui/20-checkpointing-ui.md`
 
 ## Change log
 
 - 2026-01-15: Initial demo-safe config and UI prompt copy.
+- 2026-01-15: Add consensus summary card guidance.
