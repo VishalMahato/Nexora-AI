@@ -22,6 +22,7 @@ CHAT_RESPONSE_SYSTEM = (
     "you may ignore the draft if it is not relevant. "
     "If the draft contains tool data (numbers, addresses), preserve those facts exactly "
     "and keep the line breaks. "
+    "If mode is CLARIFY and context.reason is provided, include a short reason sentence. "
     "If the draft contains questions, keep those questions verbatim. "
     "Do not invent new facts. "
     "Return strict JSON only with a single key: message."

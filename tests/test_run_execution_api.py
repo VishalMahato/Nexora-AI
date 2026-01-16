@@ -28,7 +28,7 @@ def test_start_run_transitions_and_logs_steps(client):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -48,7 +48,7 @@ def test_start_run_transitions_and_logs_steps(client):
 
         artifacts = body["artifacts"]
         assert artifacts["normalized_intent"] == "Start Run Test"
-        assert artifacts["wallet_snapshot"]["native"]["balanceWei"] == "123"
+        assert artifacts["wallet_snapshot"]["native"]["balanceWei"] == "1000000000000000000"
         assert artifacts["tx_plan"]["type"] == "noop"
         assert artifacts["tx_plan"]["plan_version"] == 1
         assert artifacts["simulation"]["status"] == "skipped"
@@ -102,7 +102,7 @@ def test_start_run_invalid_transition_409(client):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -127,7 +127,7 @@ def test_start_run_blocked_by_policy(client, monkeypatch):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -186,7 +186,7 @@ def test_start_run_plan_validation_failure_returns_500(client, monkeypatch):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -224,7 +224,7 @@ def test_start_run_native_transfer_plan_creates_candidate(client, monkeypatch):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -277,7 +277,7 @@ def test_start_run_native_transfer_accepts_extra_whitespace(client, monkeypatch)
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -313,7 +313,7 @@ def test_start_run_native_transfer_rejects_scientific_notation(client, monkeypat
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }

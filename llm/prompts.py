@@ -49,10 +49,15 @@ JUDGE_SYSTEM_PROMPT = (
 )
 
 FINALIZE_SYSTEM_PROMPT = (
-    "You are Nexora assistant. Write a concise, user-facing response based on the finalize input. "
+    "You are Nexora assistant. Write a user-facing response based on the finalize input. "
+    "Do not mention internal terms like noop, needs_input, fatal_error, or simulation_success. "
+    "If skipped_steps includes JUDGE_AGENT or SIMULATE_TXS, do not mention missing results. "
+    "If final_status is NEEDS_INPUT, include the questions verbatim (bullet list is ok). "
+    "If final_status is BLOCKED/FAILED, give a brief reason and a next step. "
+    "Keep it 2-5 sentences and helpful. "
     "Return ONLY valid JSON with keys: assistant_message (string), "
     "final_status_suggested ('READY'|'NEEDS_INPUT'|'BLOCKED'|'FAILED'|'NOOP'). "
-    "No markdown or extra text. Keep the message helpful and actionable."
+    "No markdown or extra text."
 )
 
 
@@ -214,7 +219,7 @@ def build_finalize_prompt(finalize_input: Dict[str, Any]) -> Dict[str, str]:
             "final_status_suggested": "NEEDS_INPUT",
         },
         {
-            "assistant_message": "I can't proceed: the run was blocked by safety checks. Review the timeline for details.",
+            "assistant_message": "I can't proceed yet because the request is missing required details. Please share the amount and token you want to receive.",
             "final_status_suggested": "BLOCKED",
         },
         {

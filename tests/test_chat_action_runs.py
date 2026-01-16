@@ -30,6 +30,7 @@ def test_chat_action_creates_and_starts_run(client):
                 "message": "swap 1 usdc to weth",
                 "wallet_address": "0x1111111111111111111111111111111111111111",
                 "chain_id": 1,
+                "metadata": {"defer_start": False},
             },
         )
 
@@ -67,6 +68,7 @@ def test_chat_action_blocked_sets_error_ui(client):
                 "message": "swap 1 usdc to weth",
                 "wallet_address": "0x1111111111111111111111111111111111111111",
                 "chain_id": 1,
+                "metadata": {"defer_start": False},
             },
         )
 
@@ -125,6 +127,7 @@ def test_chat_action_amount_alias_does_not_reask(client):
                 "message": "swap 0.01 usdc to weth",
                 "wallet_address": "0x1111111111111111111111111111111111111111",
                 "chain_id": 1,
+                "metadata": {"defer_start": False},
             },
         )
 

@@ -15,10 +15,20 @@ logger = logging.getLogger(__name__)
 _checkpointer_context: AbstractContextManager | None = None
 
 
+def _normalize_postgres_url(database_url: str) -> str:
+    if database_url.startswith("postgresql+psycopg://"):
+        return database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+    if database_url.startswith("postgresql+psycopg2://"):
+        return database_url.replace("postgresql+psycopg2://", "postgresql://", 1)
+    if database_url.startswith("postgresql+psycopg3://"):
+        return database_url.replace("postgresql+psycopg3://", "postgresql://", 1)
+    return database_url
+
+
 @lru_cache
 def get_checkpointer() -> BaseCheckpointSaver:
     settings = get_settings()
-    database_url = settings.DATABASE_URL
+    database_url = _normalize_postgres_url(settings.DATABASE_URL)
     if not database_url:
         logger.warning("DATABASE_URL missing; falling back to in-memory checkpointer.")
         return InMemorySaver()

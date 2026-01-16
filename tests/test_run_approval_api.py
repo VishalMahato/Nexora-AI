@@ -28,7 +28,7 @@ def _create_and_start_run(
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }

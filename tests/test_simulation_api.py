@@ -26,7 +26,7 @@ def test_simulation_success_populates_gas_and_fee(client, monkeypatch):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -71,7 +71,7 @@ def test_simulation_failure_blocks_run(client, monkeypatch):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
