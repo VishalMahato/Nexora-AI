@@ -38,6 +38,7 @@ If you are new to the codebase, start here and follow the reading order below.
 19) 18-postman-testing.md
 20) 19-step-by-step-ui-integration.md
 21) 20-checkpointing-ui.md
+22) 21-demo-safe-ui.md
 
 ## Ownership
 
@@ -83,4 +84,5 @@ These are still in use. If you edit or move them, update this hub.
 
 - 2026-01-13: Added the step-by-step UI integration doc to the reading order.
 - 2026-01-15: Add UI checkpointing guide to the reading order.
+- 2026-01-15: Add demo-safe config and UI prompt guide.
 

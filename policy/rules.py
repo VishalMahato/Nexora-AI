@@ -76,6 +76,8 @@ def rule_allowlist_targets(
 
 def rule_simulation_success(
     artifacts: Dict[str, Any],
+    *,
+    assumed_success_warn: bool = True,
 ) -> PolicyCheckResult:
     txs = _get_tx_candidates(artifacts)
     tx_requests = _get_tx_requests(artifacts)
@@ -122,11 +124,17 @@ def rule_simulation_success(
                 assumed_ids = [
                     r.get("txRequestId") for r in assumed if r.get("txRequestId")
                 ]
+                status = CheckStatus.WARN if assumed_success_warn else CheckStatus.PASS
+                reason = (
+                    "Simulation assumed success for one or more transactions."
+                    if assumed_success_warn
+                    else "Simulation assumed success (warning disabled by config)."
+                )
                 return PolicyCheckResult(
                     id="simulation_success",
                     title="Simulation: must succeed",
-                    status=CheckStatus.WARN,
-                    reason="Simulation assumed success for one or more transactions.",
+                    status=status,
+                    reason=reason,
                     metadata={
                         "assumed_count": len(assumed),
                         "assumed_tx_request_ids": assumed_ids[:3],

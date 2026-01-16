@@ -54,6 +54,7 @@ def _create_and_start_run(
             allowlist_targets_enabled=None,
             min_slippage_bps=10,
             max_slippage_bps=200,
+            assumed_success_warn=True,
         ):
             return (
                 PolicyResult(checks=[]),

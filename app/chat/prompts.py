@@ -9,7 +9,10 @@ INTENT_CLASSIFIER_SYSTEM = (
     "Return strict JSON only (no markdown). "
     "Required keys: mode, intent_type, confidence, slots, missing_slots, reason. "
     "mode must be one of QUERY, ACTION, CLARIFY, GENERAL. "
-    "Use conversation history in context when available to fill missing slots."
+    "Use conversation history in context when available to fill missing slots. "
+    "If the input is nonsense or random text, respond with mode GENERAL and low confidence. "
+    "If context includes supported_tokens and the request uses unsupported tokens, "
+    "return CLARIFY and ask for supported tokens."
 )
 
 CHAT_RESPONSE_SYSTEM = (
@@ -189,6 +192,29 @@ def build_intent_classifier_prompt(message: str, context: Dict[str, Any]) -> Dic
                     "slots": {"token_in": "USDC", "token_out": "WETH", "amount_in": "1"},
                     "missing_slots": [],
                     "reason": "actionable swap",
+                },
+            },
+            {
+                "input": "swaop sbfja to sjkhak",
+                "output": {
+                    "mode": "GENERAL",
+                    "intent_type": "SMALLTALK",
+                    "confidence": 0.2,
+                    "slots": {},
+                    "missing_slots": [],
+                    "reason": "gibberish",
+                },
+            },
+            {
+                "input": "swap 1 dai to usdc",
+                "context": {"supported_tokens": ["USDC", "WETH"]},
+                "output": {
+                    "mode": "CLARIFY",
+                    "intent_type": "SWAP",
+                    "confidence": 0.6,
+                    "slots": {"token_in": "DAI", "token_out": "USDC", "amount_in": "1"},
+                    "missing_slots": ["token_in"],
+                    "reason": "unsupported_token",
                 },
             },
         ],

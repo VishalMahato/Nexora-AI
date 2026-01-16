@@ -57,6 +57,7 @@ def evaluate_policies(
     allowlist_targets_enabled: bool = True,
     min_slippage_bps: int = 10,
     max_slippage_bps: int = 200,
+    assumed_success_warn: bool = True,
 ) -> Tuple[PolicyResult, Decision]:
     allowlisted_to = {a.lower() for a in (allowlisted_to or set())}
     allowlisted_tokens = allowlisted_tokens or {}
@@ -102,7 +103,7 @@ def evaluate_policies(
         rule_approve_amount_sane(artifacts),
         rule_swap_slippage_bounds(artifacts, min_bps=min_slippage_bps, max_bps=max_slippage_bps),
         rule_swap_min_out_present(artifacts),
-        rule_simulation_success(artifacts),
+        rule_simulation_success(artifacts, assumed_success_warn=assumed_success_warn),
     ])
 
     result = PolicyResult(checks=checks)
