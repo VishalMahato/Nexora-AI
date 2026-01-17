@@ -28,7 +28,7 @@ def test_start_run_transitions_and_logs_steps(client):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -43,26 +43,21 @@ def test_start_run_transitions_and_logs_steps(client):
         assert s.status_code == 200, s.text
 
         body = s.json()
-        assert body["status"] == RunStatus.AWAITING_APPROVAL.value
+        assert body["status"] == RunStatus.PAUSED.value
+        assert body["final_status"] == "NOOP"
 
         artifacts = body["artifacts"]
         assert artifacts["normalized_intent"] == "Start Run Test"
-        assert artifacts["wallet_snapshot"]["native"]["balanceWei"] == "123"
+        assert artifacts["wallet_snapshot"]["native"]["balanceWei"] == "1000000000000000000"
         assert artifacts["tx_plan"]["type"] == "noop"
         assert artifacts["tx_plan"]["plan_version"] == 1
-        assert artifacts["simulation"]["status"] == "skipped"
-
-        # --- NEW (F12) ---
-        assert "policy_result" in artifacts
-        assert "decision" in artifacts
-        assert artifacts["decision"]["action"] == "NEEDS_APPROVAL"
-
-        # --- NEW (F20) ---
+        assert "simulation" not in artifacts
+        assert "policy_result" not in artifacts
+        assert "security_result" not in artifacts
+        assert "judge_result" not in artifacts
         assert "planner_result" in artifacts
-        assert "security_result" in artifacts
-        assert "judge_result" in artifacts
         assert isinstance(artifacts.get("timeline"), list)
-        assert len(artifacts.get("timeline")) >= 2
+        assert len(artifacts.get("timeline")) >= 1
 
     db = SessionLocal()
     try:
@@ -77,13 +72,13 @@ def test_start_run_transitions_and_logs_steps(client):
         assert "INPUT_NORMALIZE" in step_names
         assert "WALLET_SNAPSHOT" in step_names
         assert "PLAN_TX" in step_names
-        assert "BUILD_TXS" in step_names
-        assert "SIMULATE_TXS" in step_names
-        assert "POLICY_EVAL" in step_names   # --- NEW ---
-        assert "SECURITY_EVAL" in step_names
-        assert "JUDGE_AGENT" in step_names
-        assert "REPAIR_ROUTER" in step_names
         assert "FINALIZE" in step_names
+        assert "BUILD_TXS" not in step_names
+        assert "SIMULATE_TXS" not in step_names
+        assert "POLICY_EVAL" not in step_names
+        assert "SECURITY_EVAL" not in step_names
+        assert "JUDGE_AGENT" not in step_names
+        assert "REPAIR_ROUTER" not in step_names
     finally:
         db.close()
 
@@ -101,7 +96,7 @@ def test_start_run_invalid_transition_409(client):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -114,8 +109,9 @@ def test_start_run_invalid_transition_409(client):
     assert s2.status_code == 409
 
 def test_start_run_blocked_by_policy(client, monkeypatch):
+    recipient = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     payload = {
-        "intent": "Block me",
+        "intent": f"send 0.0001 eth to {recipient}",
         "walletAddress": VALID_WALLET,
         "chainId": 1,
     }
@@ -126,7 +122,7 @@ def test_start_run_blocked_by_policy(client, monkeypatch):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -140,8 +136,10 @@ def test_start_run_blocked_by_policy(client, monkeypatch):
         allowlisted_to=None,
         allowlisted_tokens=None,
         allowlisted_routers=None,
+        allowlist_targets_enabled=None,
         min_slippage_bps=10,
         max_slippage_bps=200,
+        assumed_success_warn=True,
     ):
         return (
             PolicyResult(checks=[]),
@@ -183,7 +181,7 @@ def test_start_run_plan_validation_failure_returns_500(client, monkeypatch):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -221,7 +219,7 @@ def test_start_run_native_transfer_plan_creates_candidate(client, monkeypatch):
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -237,6 +235,7 @@ def test_start_run_native_transfer_plan_creates_candidate(client, monkeypatch):
 
         body = s.json()
         assert body["status"] == RunStatus.AWAITING_APPROVAL.value
+        assert body["final_status"] == "READY"
 
         artifacts = body["artifacts"]
         assert artifacts["tx_plan"]["type"] == "plan"
@@ -273,7 +272,7 @@ def test_start_run_native_transfer_accepts_extra_whitespace(client, monkeypatch)
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -309,7 +308,7 @@ def test_start_run_native_transfer_rejects_scientific_notation(client, monkeypat
     fake_snapshot = {
         "chainId": 1,
         "walletAddress": VALID_WALLET,
-        "native": {"balanceWei": "123"},
+        "native": {"balanceWei": "1000000000000000000"},
         "erc20": [],
         "allowances": [],
     }
@@ -342,6 +341,8 @@ def test_start_run_judge_verdict_mapping(client, monkeypatch):
         artifacts = {
             "decision": {"action": "NEEDS_APPROVAL"},
             "judge_result": {"output": {"verdict": verdict}},
+            "tx_plan": {"type": "plan"},
+            "simulation": {"status": "completed"},
         }
 
         def fake_run_graph(_db, _state, *, _artifacts=artifacts):

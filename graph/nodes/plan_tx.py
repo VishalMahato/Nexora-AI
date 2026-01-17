@@ -12,6 +12,7 @@ from db.repos.run_steps_repo import log_step
 from graph.artifacts import append_timeline_event, agent_result_to_timeline, put_artifact
 from graph.schemas import TxCandidate, TxPlan, TxAction
 from graph.state import RunState
+from graph.utils.needs_input import set_needs_input
 from llm.client import LLMClient
 from llm.prompts import build_plan_tx_prompt
 from tools.tool_runner import run_tool
@@ -145,6 +146,153 @@ def _noop_plan(normalized_intent: str, reason: str) -> Dict[str, Any]:
     }
 
 
+def _parse_swap_intent(normalized_intent: str) -> tuple[str | None, str | None, str | None]:
+    text = " ".join(normalized_intent.lower().split())
+    match = re.match(
+        r"^swap(?:\s+([0-9]+(?:\.[0-9]+)?))?(?:\s+([a-zA-Z0-9]+))?(?:\s+to\s+([a-zA-Z0-9]+))?$",
+        text,
+    )
+    if not match:
+        return None, None, None
+    return match.group(1), match.group(2), match.group(3)
+
+
+def _parse_transfer_intent(
+    normalized_intent: str,
+) -> tuple[str | None, str | None, str | None]:
+    text = " ".join(normalized_intent.lower().split())
+    match = re.match(
+        r"^(send|transfer)(?:\s+([0-9]+(?:\.[0-9]+)?))?(?:\s+([a-zA-Z0-9]+))?(?:\s+to\s+(0x[a-fA-F0-9]{40}))?$",
+        text,
+    )
+    if not match:
+        return None, None, None
+    return match.group(2), match.group(3), match.group(4)
+
+
+def _amount_to_base_units(amount_str: str, decimals: int) -> int | None:
+    try:
+        amount = Decimal(str(amount_str))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    if amount <= 0:
+        return None
+    scale = Decimal(10) ** decimals
+    return int((amount * scale).to_integral_value())
+
+
+def _format_amount_from_base_units(value: int, decimals: int) -> str:
+    if decimals <= 0:
+        return str(value)
+    scaled = Decimal(value) / (Decimal(10) ** decimals)
+    return f"{scaled:.4f}".rstrip("0").rstrip(".")
+
+
+def _balance_for_symbol(
+    wallet_snapshot: Dict[str, Any],
+    symbol: str,
+    allowlisted_tokens: Dict[str, Any],
+) -> tuple[int, int] | None:
+    lookup = symbol.strip().upper()
+    token_meta = None
+    for key, meta in (allowlisted_tokens or {}).items():
+        if str(key).upper() == lookup:
+            token_meta = meta
+            break
+    if not isinstance(token_meta, dict):
+        return None
+    decimals = token_meta.get("decimals")
+    if not isinstance(decimals, int):
+        return None
+    if token_meta.get("is_native"):
+        balance_wei = (wallet_snapshot.get("native") or {}).get("balanceWei") or "0"
+        try:
+            return int(str(balance_wei)), decimals
+        except Exception:
+            return None
+    token_addr = token_meta.get("address")
+    if not token_addr:
+        return None
+    for token in wallet_snapshot.get("erc20") or []:
+        if str(token.get("token", "")).lower() != str(token_addr).lower():
+            continue
+        balance = token.get("balance") or "0"
+        try:
+            return int(str(balance)), decimals
+        except Exception:
+            return None
+    return 0, decimals
+
+
+def _required_funds(tx_plan: Dict[str, Any]) -> tuple[str, str] | None:
+    actions = tx_plan.get("actions") or []
+    if not isinstance(actions, list):
+        return None
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        action_type = (action.get("action") or "").upper()
+        if action_type == "SWAP":
+            token_in = action.get("token_in") or action.get("tokenIn")
+            amount_in = action.get("amount_in") or action.get("amountIn")
+            if token_in and amount_in:
+                return str(token_in), str(amount_in)
+        if action_type == "TRANSFER":
+            amount = action.get("amount")
+            meta = action.get("meta") or {}
+            asset = meta.get("asset") or action.get("asset") or action.get("token")
+            if asset and amount:
+                return str(asset), str(amount)
+    return None
+
+
+def _detect_missing_inputs(
+    *,
+    normalized_intent: str,
+    chain_id: int | None,
+    wallet_address: str | None,
+    allowlisted_tokens: Dict[str, Any],
+) -> tuple[list[str], dict[str, Any]]:
+    missing: list[str] = []
+    data: dict[str, Any] = {}
+
+    if not chain_id:
+        missing.append("chain_id")
+    if not wallet_address:
+        missing.append("wallet_address")
+
+    text = " ".join(normalized_intent.lower().split())
+    if text.startswith("swap"):
+        amount, token_in, token_out = _parse_swap_intent(normalized_intent)
+
+        if not amount:
+            missing.append("amount_in")
+        if not token_in:
+            missing.append("token_in")
+        if not token_out:
+            missing.append("token_out")
+
+        allowset = {k.upper() for k in (allowlisted_tokens or {}).keys()}
+        if token_in and token_in.upper() not in allowset:
+            missing.append("token_in")
+        if token_out and token_out.upper() not in allowset:
+            missing.append("token_out")
+        if allowset:
+            data["token_options"] = sorted(allowset)
+
+    if text.startswith("send") or text.startswith("transfer"):
+        amount, asset, to_addr = _parse_transfer_intent(normalized_intent)
+        if not amount:
+            missing.append("amount")
+        if not asset:
+            missing.append("asset")
+        if not to_addr:
+            missing.append("recipient")
+
+    missing = list(dict.fromkeys(missing))
+    return missing, data
+
+
 def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
     db: Session = config["configurable"]["db"]
     settings = get_settings()
@@ -202,6 +350,36 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
 
     state.artifacts["planner_input"] = planner_input
 
+    missing, needs_data = _detect_missing_inputs(
+        normalized_intent=normalized_intent,
+        chain_id=chain_id,
+        wallet_address=state.wallet_address,
+        allowlisted_tokens=allowlisted_tokens,
+    )
+    if missing:
+        set_needs_input(
+            state,
+            missing=missing,
+            resume_from="PLAN_TX",
+            data=needs_data,
+        )
+        tx_plan = _noop_plan(normalized_intent, "needs_input")
+        state.artifacts["tx_plan"] = tx_plan
+
+        log_step(
+            db,
+            run_id=state.run_id,
+            step_name="PLAN_TX",
+            status="DONE",
+            output={
+                "tx_plan": tx_plan,
+                "missing": missing,
+                "needs_input": state.artifacts.get("needs_input"),
+            },
+            agent="LangGraph",
+        )
+        return state
+
     try:
         planner_warnings: List[str] = []
         llm_error: str | None = None
@@ -249,6 +427,46 @@ def plan_tx(state: RunState, config: RunnableConfig) -> RunState:
             planner_warnings.append("planner output exceeded candidate limit; converted to noop")
             tx_plan = _noop_plan(normalized_intent, "planner output exceeded candidate limit")
             fallback_used = True
+
+        required = _required_funds(tx_plan) if isinstance(tx_plan, dict) else None
+        if not required:
+            swap_amount, swap_token_in, _ = _parse_swap_intent(normalized_intent)
+            if swap_amount and swap_token_in:
+                required = (swap_token_in, swap_amount)
+        if not required:
+            transfer_amount, transfer_asset, _ = _parse_transfer_intent(normalized_intent)
+            if transfer_amount and transfer_asset:
+                required = (transfer_asset, transfer_amount)
+        if required:
+            symbol, amount_str = required
+            balance_info = _balance_for_symbol(wallet_snapshot, symbol, allowlisted_tokens)
+            if balance_info:
+                balance_wei, decimals = balance_info
+                amount_wei = _amount_to_base_units(amount_str, decimals)
+                if amount_wei is not None and balance_wei < amount_wei:
+                    balance_fmt = _format_amount_from_base_units(balance_wei, decimals)
+                    required_fmt = _format_amount_from_base_units(amount_wei, decimals)
+                    questions = [
+                        (
+                            f"Your {symbol.upper()} balance is {balance_fmt}, which isn't enough "
+                            f"to cover {amount_str}. Please add funds or lower the amount."
+                        )
+                    ]
+                    set_needs_input(
+                        state,
+                        questions=questions,
+                        missing=[],
+                        resume_from="PLAN_TX",
+                        data={
+                            "insufficient_balance": True,
+                            "asset": symbol.upper(),
+                            "balance": balance_fmt,
+                            "required": required_fmt,
+                        },
+                    )
+                    planner_warnings.append("insufficient balance for requested amount")
+                    tx_plan = _noop_plan(normalized_intent, "insufficient balance")
+                    fallback_used = True
 
         allowlisted_to = settings.allowlisted_to_set()
         if allowlisted_to:

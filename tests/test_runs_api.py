@@ -77,6 +77,8 @@ def test_get_v1_runs_returns_run(client):
     assert run["wallet_address"] == create_payload["walletAddress"]
     assert run["chain_id"] == create_payload["chainId"]
     assert run["status"] == RunStatus.CREATED.value
+    assert "current_step" in run
+    assert "final_status" in run
 
     _cleanup_run(run_id)
 

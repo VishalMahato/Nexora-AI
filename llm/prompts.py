@@ -48,6 +48,18 @@ JUDGE_SYSTEM_PROMPT = (
     "Do not include chain-of-thought."
 )
 
+FINALIZE_SYSTEM_PROMPT = (
+    "You are Nexora assistant. Write a user-facing response based on the finalize input. "
+    "Do not mention internal terms like noop, needs_input, fatal_error, or simulation_success. "
+    "If skipped_steps includes JUDGE_AGENT or SIMULATE_TXS, do not mention missing results. "
+    "If final_status is NEEDS_INPUT, include the questions verbatim (bullet list is ok). "
+    "If final_status is BLOCKED/FAILED, give a brief reason and a next step. "
+    "Keep it 2-5 sentences and helpful. "
+    "Return ONLY valid JSON with keys: assistant_message (string), "
+    "final_status_suggested ('READY'|'NEEDS_INPUT'|'BLOCKED'|'FAILED'|'NOOP'). "
+    "No markdown or extra text."
+)
+
 
 def build_plan_tx_prompt(planner_input: Dict[str, Any]) -> Dict[str, str]:
     user_payload = {
@@ -194,3 +206,35 @@ def build_judge_prompt(judge_input: Dict[str, Any]) -> Dict[str, str]:
         f"Input: {json.dumps(judge_input, ensure_ascii=True)}"
     )
     return {"system": JUDGE_SYSTEM_PROMPT, "user": user}
+
+
+def build_finalize_prompt(finalize_input: Dict[str, Any]) -> Dict[str, str]:
+    examples = [
+        {
+            "assistant_message": "I prepared a safe transaction plan. Please review and approve to proceed.",
+            "final_status_suggested": "READY",
+        },
+        {
+            "assistant_message": "I need a bit more detail:\n- Which token are you swapping from?\n- How much do you want to swap?",
+            "final_status_suggested": "NEEDS_INPUT",
+        },
+        {
+            "assistant_message": "I can't proceed yet because the request is missing required details. Please share the amount and token you want to receive.",
+            "final_status_suggested": "BLOCKED",
+        },
+        {
+            "assistant_message": "I couldn't complete the request due to an error. Please try again or adjust the request.",
+            "final_status_suggested": "FAILED",
+        },
+        {
+            "assistant_message": "I couldn't identify an action to take. Tell me what you'd like to do, for example: 'swap 1 USDC to WETH'.",
+            "final_status_suggested": "NOOP",
+        },
+    ]
+    user = (
+        "Compose the final assistant message based on the provided input. "
+        "Return ONLY JSON that matches the schema.\n"
+        f"Examples: {json.dumps(examples, ensure_ascii=True)}\n"
+        f"Input: {json.dumps(finalize_input, ensure_ascii=True)}"
+    )
+    return {"system": FINALIZE_SYSTEM_PROMPT, "user": user}

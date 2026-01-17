@@ -16,6 +16,7 @@ from db.base import Base
 class RunStatus(enum.Enum):
     CREATED = "CREATED"
     RUNNING = "RUNNING"
+    PAUSED = "PAUSED"
     AWAITING_APPROVAL = "AWAITING_APPROVAL"
     APPROVED_READY = "APPROVED_READY"
     SUBMITTED = "SUBMITTED"
@@ -49,6 +50,8 @@ class Run(Base):
     error_code: Mapped[str | None] = mapped_column(String, nullable=True)
     error_message: Mapped[str | None] = mapped_column(String, nullable=True)
     artifacts: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    current_step: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    final_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     created_at = mapped_column(
         DateTime(timezone=True),

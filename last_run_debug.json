@@ -1,0 +1,553 @@
+{
+  "run": {
+    "id": "0beda696-02ab-4cef-a9c0-df56a3499af2",
+    "intent": "Swap 0.1 eth to USDC",
+    "wallet_address": "0x51c9A4b99B5C86A8c67243B5a9Ea19ECeF5f3235",
+    "chain_id": 1,
+    "status": "BLOCKED",
+    "artifacts": {
+      "quote": {
+        "path": [
+          "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        ],
+        "minOut": "334161532",
+        "router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+        "amountIn": "100000000000000000",
+        "routerKey": "UNISWAP_V2_ROUTER",
+        "amountsOut": [
+          "100000000000000000",
+          "335840736"
+        ],
+        "blockNumber": 24235184,
+        "slippageBps": 50,
+        "amountInSource": "human_amount"
+      },
+      "attempt": 1,
+      "tx_plan": {
+        "type": "plan",
+        "reason": null,
+        "actions": [
+          {
+            "to": null,
+            "meta": null,
+            "token": null,
+            "action": "SWAP",
+            "amount": null,
+            "spender": null,
+            "chain_id": null,
+            "token_in": "ETH",
+            "amount_in": "0.1",
+            "recipient": "0x51c9A4b99B5C86A8c67243B5a9Ea19ECeF5f3235",
+            "token_out": "USDC",
+            "router_key": "UNISWAP_V2_ROUTER",
+            "slippage_bps": 50,
+            "deadline_seconds": 1200,
+            "amount_in_base_units": null
+          }
+        ],
+        "candidates": [
+          {
+            "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+            "data": "0x38ed1739000000000000000000000000000000000000000000000000016345785d8a00000000000000000000000000000000000000000000000000000000000013eae67c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000051c9a4b99b5c86a8c67243b5a9ea19ecef5f3235000000000000000000000000000000000000000000000000000000006967fa170000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "meta": {
+              "kind": "SWAP",
+              "minOut": "334161532",
+              "tokenIn": "ETH",
+              "amountIn": "0.1",
+              "tokenOut": "USDC",
+              "routerKey": "UNISWAP_V2_ROUTER",
+              "slippageBps": 50,
+              "amountInSource": "human_amount",
+              "deadlineSeconds": 1200,
+              "amountInBaseUnits": "100000000000000000"
+            },
+            "chain_id": 1,
+            "valueWei": "0"
+          }
+        ],
+        "plan_version": 1,
+        "normalized_intent": "Swap 0.1 eth to USDC"
+      },
+      "decision": {
+        "action": "BLOCK",
+        "reasons": [
+          "Simulation: must succeed: Simulation failed/reverted."
+        ],
+        "summary": "Blocked: one or more required safety checks failed.",
+        "severity": "HIGH",
+        "risk_score": 100
+      },
+      "timeline": [
+        {
+          "step": "PLAN_TX",
+          "title": "planner",
+          "status": "WARN",
+          "attempt": 1,
+          "summary": "Planner produced a transaction plan."
+        },
+        {
+          "step": "SECURITY_EVAL",
+          "title": "security",
+          "status": "BLOCK",
+          "attempt": 1,
+          "summary": "Security evaluation blocked the run."
+        },
+        {
+          "step": "JUDGE_AGENT",
+          "title": "judge",
+          "status": "BLOCK",
+          "attempt": 1,
+          "summary": "Simulation failed; safety checks not passed."
+        },
+        {
+          "step": "REPAIR_ROUTER",
+          "title": "repair_router",
+          "status": "DONE",
+          "attempt": 1,
+          "summary": "Judge blocked; routing to finalize."
+        }
+      ],
+      "simulation": {
+        "mode": "single",
+        "status": "completed",
+        "results": [
+          {
+            "tx": {
+              "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+              "data": "0x38ed1739000000000000000000000000000000000000000000000000016345785d8a00000000000000000000000000000000000000000000000000000000000013eae67c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000051c9a4b99b5c86a8c67243b5a9ea19ecef5f3235000000000000000000000000000000000000000000000000000000006967fa170000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+              "meta": {
+                "kind": "SWAP",
+                "minOut": "334161532",
+                "tokenIn": "ETH",
+                "amountIn": "0.1",
+                "tokenOut": "USDC",
+                "routerKey": "UNISWAP_V2_ROUTER",
+                "slippageBps": 50,
+                "amountInSource": "human_amount",
+                "deadlineSeconds": 1200,
+                "amountInBaseUnits": "100000000000000000"
+              },
+              "chain_id": 1,
+              "valueWei": "0"
+            },
+            "fee": null,
+            "error": "Web3RPCError: eth_call reverted: ('execution reverted: TransferHelper: TRANSFER_FROM_FAILED', '0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000245472616e7366657248656c7065723a205452414e534645525f46524f4d5f4641494c454400000000000000000000000000000000000000000000000000000000')",
+            "success": false,
+            "gasEstimate": null
+          }
+        ],
+        "summary": {
+          "num_failed": 1,
+          "num_success": 0
+        }
+      },
+      "tx_requests": [
+        {
+          "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+          "data": "0x38ed1739000000000000000000000000000000000000000000000000016345785d8a00000000000000000000000000000000000000000000000000000000000013eae67c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000051c9a4b99b5c86a8c67243b5a9ea19ecef5f3235000000000000000000000000000000000000000000000000000000006967fa170000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "meta": {
+            "kind": "SWAP",
+            "minOut": "334161532",
+            "tokenIn": "ETH",
+            "amountIn": "0.1",
+            "tokenOut": "USDC",
+            "routerKey": "UNISWAP_V2_ROUTER",
+            "slippageBps": 50,
+            "amountInSource": "human_amount",
+            "deadlineSeconds": 1200,
+            "amountInBaseUnits": "100000000000000000"
+          },
+          "chainId": 1,
+          "valueWei": "0",
+          "txRequestId": "swap-1"
+        }
+      ],
+      "judge_result": {
+        "agent": "judge",
+        "errors": null,
+        "output": {
+          "issues": [
+            {
+              "code": "SIMULATION_FAILED",
+              "data": {
+                "error": "Web3RPCError: eth_call reverted: ('execution reverted: TransferHelper: TRANSFER_FROM_FAILED', '0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000245472616e7366657248656c7065723a205452414e534645525f46524f4d5f4641494c454400000000000000000000000000000000000000000000000000000000')",
+                "index": 0
+              },
+              "message": "Simulation failed for candidate 0.",
+              "severity": "HIGH"
+            }
+          ],
+          "verdict": "BLOCK",
+          "reasoning_summary": "Simulation failed; safety checks not passed."
+        },
+        "status": "BLOCK",
+        "sources": [
+          "planner_result",
+          "tx_plan",
+          "simulation",
+          "policy_result",
+          "decision",
+          "wallet_snapshot"
+        ],
+        "version": 1,
+        "step_name": "JUDGE_AGENT",
+        "confidence": null,
+        "created_at": "2026-01-14T19:58:51.761780Z",
+        "explanation": {
+          "risks": [
+            {
+              "title": "SIMULATION_FAILED",
+              "detail": "Simulation failed for candidate 0.",
+              "severity": "HIGH"
+            }
+          ],
+          "summary": "Simulation failed; safety checks not passed.",
+          "why_safe": [],
+          "next_steps": [],
+          "assumptions": []
+        }
+      },
+      "max_attempts": 2,
+      "planner_input": {
+        "chain_id": 1,
+        "defaults": {
+          "dex_kind": "uniswap_v2",
+          "slippage_bps": 50,
+          "deadline_seconds": 1200
+        },
+        "wallet_snapshot": {
+          "erc20": [
+            {
+              "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "symbol": "USDC",
+              "balance": "0",
+              "decimals": 6
+            },
+            {
+              "token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+              "symbol": "WETH",
+              "balance": "508383335901618550",
+              "decimals": 18
+            }
+          ],
+          "native": {
+            "balanceWei": "11176021543820465378"
+          },
+          "chainId": 1,
+          "allowances": [
+            {
+              "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "spender": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+              "allowance": "0"
+            },
+            {
+              "token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+              "spender": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+              "allowance": "0"
+            }
+          ],
+          "walletAddress": "0x51c9A4b99B5C86A8c67243B5a9Ea19ECeF5f3235"
+        },
+        "normalized_intent": "Swap 0.1 eth to USDC",
+        "allowlisted_tokens": {
+          "ETH": {
+            "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "decimals": 18,
+            "is_native": true
+          },
+          "USDC": {
+            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "decimals": 6
+          },
+          "WETH": {
+            "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "decimals": 18
+          }
+        },
+        "allowlisted_routers": {
+          "UNISWAP_V2_ROUTER": {
+            "address": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+          }
+        }
+      },
+      "policy_result": {
+        "checks": [
+          {
+            "id": "required_artifacts",
+            "title": "Required artifacts present",
+            "reason": "All required artifacts are present.",
+            "status": "PASS",
+            "metadata": {}
+          },
+          {
+            "id": "no_broadcast",
+            "title": "Invariant: no signing/broadcasting",
+            "reason": "No signing/broadcasting requested.",
+            "status": "PASS",
+            "metadata": {}
+          },
+          {
+            "id": "allowlist_targets",
+            "title": "Allowlist: transaction targets",
+            "reason": "All transaction targets are allowlisted.",
+            "status": "PASS",
+            "metadata": {}
+          },
+          {
+            "id": "defi_allowlists",
+            "title": "DeFi: tokens and routers allowlisted",
+            "reason": "All DeFi tokens and routers are allowlisted.",
+            "status": "PASS",
+            "metadata": {}
+          },
+          {
+            "id": "approve_amount_sane",
+            "title": "Approve: amount bounds",
+            "reason": "Approve amounts are within safe bounds.",
+            "status": "PASS",
+            "metadata": {}
+          },
+          {
+            "id": "swap_slippage_bounds",
+            "title": "Swap: slippage bounds",
+            "reason": "Swap slippage is within allowed bounds.",
+            "status": "PASS",
+            "metadata": {}
+          },
+          {
+            "id": "swap_min_out",
+            "title": "Swap: min out present",
+            "reason": "Swap minOut is present.",
+            "status": "PASS",
+            "metadata": {}
+          },
+          {
+            "id": "simulation_success",
+            "title": "Simulation: must succeed",
+            "reason": "Simulation failed/reverted.",
+            "status": "FAIL",
+            "metadata": {
+              "errors": [
+                "Web3RPCError: eth_call reverted: ('execution reverted: TransferHelper: TRANSFER_FROM_FAILED', '0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000245472616e7366657248656c7065723a205452414e534645525f46524f4d5f4641494c454400000000000000000000000000000000000000000000000000000000')"
+              ],
+              "num_failed": 1
+            }
+          }
+        ]
+      },
+      "planner_result": {
+        "agent": "planner",
+        "errors": null,
+        "output": {
+          "tx_plan": {
+            "type": "plan",
+            "reason": null,
+            "actions": [
+              {
+                "to": null,
+                "meta": null,
+                "token": null,
+                "action": "SWAP",
+                "amount": null,
+                "spender": null,
+                "chain_id": null,
+                "token_in": "ETH",
+                "amount_in": "0.1",
+                "recipient": "0x51c9A4b99B5C86A8c67243B5a9Ea19ECeF5f3235",
+                "token_out": "USDC",
+                "router_key": "UNISWAP_V2_ROUTER",
+                "slippage_bps": 50,
+                "deadline_seconds": 1200,
+                "amount_in_base_units": null
+              }
+            ],
+            "candidates": [
+              {
+                "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+                "data": "0x",
+                "meta": {
+                  "asset": "ETH"
+                },
+                "chain_id": 1,
+                "valueWei": "100000000000000000"
+              }
+            ],
+            "plan_version": 1,
+            "normalized_intent": "Swap 0.1 eth to USDC"
+          }
+        },
+        "status": "WARN",
+        "sources": [
+          "normalized_intent",
+          "wallet_snapshot",
+          "allowlisted_tokens",
+          "allowlisted_routers",
+          "defaults"
+        ],
+        "version": 1,
+        "step_name": "PLAN_TX",
+        "confidence": null,
+        "created_at": "2026-01-14T19:58:28.113601Z",
+        "explanation": {
+          "risks": [
+            {
+              "title": "Planner warning",
+              "detail": "target not in allowlist; policy may block",
+              "severity": "MED"
+            }
+          ],
+          "summary": "Planner produced a transaction plan.",
+          "why_safe": [],
+          "next_steps": [],
+          "assumptions": []
+        }
+      },
+      "security_result": {
+        "agent": "security",
+        "errors": null,
+        "output": {
+          "decision": {
+            "action": "BLOCK",
+            "reasons": [
+              "Simulation: must succeed: Simulation failed/reverted."
+            ],
+            "summary": "Blocked: one or more required safety checks failed.",
+            "severity": "HIGH",
+            "risk_score": 100
+          },
+          "policy_result": {
+            "checks": [
+              {
+                "id": "required_artifacts",
+                "title": "Required artifacts present",
+                "reason": "All required artifacts are present.",
+                "status": "PASS",
+                "metadata": {}
+              },
+              {
+                "id": "no_broadcast",
+                "title": "Invariant: no signing/broadcasting",
+                "reason": "No signing/broadcasting requested.",
+                "status": "PASS",
+                "metadata": {}
+              },
+              {
+                "id": "allowlist_targets",
+                "title": "Allowlist: transaction targets",
+                "reason": "All transaction targets are allowlisted.",
+                "status": "PASS",
+                "metadata": {}
+              },
+              {
+                "id": "defi_allowlists",
+                "title": "DeFi: tokens and routers allowlisted",
+                "reason": "All DeFi tokens and routers are allowlisted.",
+                "status": "PASS",
+                "metadata": {}
+              },
+              {
+                "id": "approve_amount_sane",
+                "title": "Approve: amount bounds",
+                "reason": "Approve amounts are within safe bounds.",
+                "status": "PASS",
+                "metadata": {}
+              },
+              {
+                "id": "swap_slippage_bounds",
+                "title": "Swap: slippage bounds",
+                "reason": "Swap slippage is within allowed bounds.",
+                "status": "PASS",
+                "metadata": {}
+              },
+              {
+                "id": "swap_min_out",
+                "title": "Swap: min out present",
+                "reason": "Swap minOut is present.",
+                "status": "PASS",
+                "metadata": {}
+              },
+              {
+                "id": "simulation_success",
+                "title": "Simulation: must succeed",
+                "reason": "Simulation failed/reverted.",
+                "status": "FAIL",
+                "metadata": {
+                  "errors": [
+                    "Web3RPCError: eth_call reverted: ('execution reverted: TransferHelper: TRANSFER_FROM_FAILED', '0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000245472616e7366657248656c7065723a205452414e534645525f46524f4d5f4641494c454400000000000000000000000000000000000000000000000000000000')"
+                  ],
+                  "num_failed": 1
+                }
+              }
+            ]
+          }
+        },
+        "status": "BLOCK",
+        "sources": [
+          "tx_plan",
+          "simulation",
+          "wallet_snapshot",
+          "allowlist_to"
+        ],
+        "version": 1,
+        "step_name": "SECURITY_EVAL",
+        "confidence": null,
+        "created_at": "2026-01-14T19:58:41.590671Z",
+        "explanation": {
+          "risks": [
+            {
+              "title": "Simulation: must succeed",
+              "detail": "Simulation failed/reverted.",
+              "severity": "HIGH"
+            }
+          ],
+          "summary": "Security evaluation blocked the run.",
+          "why_safe": [],
+          "next_steps": [],
+          "assumptions": []
+        }
+      },
+      "wallet_snapshot": {
+        "erc20": [
+          {
+            "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "symbol": "USDC",
+            "balance": "0",
+            "decimals": 6
+          },
+          {
+            "token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "symbol": "WETH",
+            "balance": "508383335901618550",
+            "decimals": 18
+          }
+        ],
+        "native": {
+          "balanceWei": "11176021543820465378"
+        },
+        "chainId": 1,
+        "allowances": [
+          {
+            "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "spender": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+            "allowance": "0"
+          },
+          {
+            "token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "spender": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+            "allowance": "0"
+          }
+        ],
+        "walletAddress": "0x51c9A4b99B5C86A8c67243B5a9Ea19ECeF5f3235"
+      },
+      "planner_llm_used": true,
+      "planner_warnings": [
+        "target not in allowlist; policy may block"
+      ],
+      "repair_next_step": "FINALIZE",
+      "normalized_intent": "Swap 0.1 eth to USDC"
+    },
+    "created_at": "2026-01-14T19:57:47.655875Z",
+    "updated_at": "2026-01-14T19:58:54.048272Z"
+  }
+}

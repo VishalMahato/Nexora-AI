@@ -1,4 +1,5 @@
 from graph.nodes.input_normalize import input_normalize
+from graph.nodes.precheck import precheck
 from graph.nodes.wallet_snapshot import wallet_snapshot
 from graph.nodes.plan_tx import plan_tx, _plan_tx_stub
 from graph.nodes.build_txs import build_txs
@@ -8,10 +9,12 @@ from graph.nodes.security_eval import security_eval
 from graph.nodes.judge_agent import judge_agent
 from graph.nodes.repair_router import repair_router
 from graph.nodes.repair_plan_tx import repair_plan_tx
+from graph.nodes.clarify import clarify
 from graph.nodes.finalize import finalize
 
 __all__ = [
     "input_normalize",
+    "precheck",
     "wallet_snapshot",
     "plan_tx",
     "_plan_tx_stub",
@@ -22,5 +25,6 @@ __all__ = [
     "judge_agent",
     "repair_router",
     "repair_plan_tx",
+    "clarify",
     "finalize",
 ]

@@ -1,0 +1,29 @@
+# Glossary
+
+- ACTION: Chat mode that creates and starts a run.
+- QUERY: Chat mode for read-only responses without runs.
+- CLARIFY: Chat mode that asks for missing fields.
+- GENERAL: Chat mode for smalltalk and general questions.
+- Run: A single execution of the LangGraph pipeline.
+- final_status: Outcome derived from artifacts (READY/NEEDS_INPUT/BLOCKED/FAILED/NOOP).
+- PAUSED: Run status used for NEEDS_INPUT/NOOP outcomes.
+- tx_plan: Planner output describing actions and candidates.
+- tx_requests: Transaction requests returned for frontend signing.
+- AgentResult: Standard agent output contract with explanation.
+- Timeline: UI-friendly list of step summaries.
+- Policy result: Structured checks with pass/warn/fail statuses.
+- Decision: Final policy decision with severity and reasons.
+- Artifacts: All outputs produced by a run (planner, simulation, policy, etc).
+- assumed_success: Simulation flag when a swap is assumed safe after approve.
+- Allowlist: Configured list of allowed tokens and routers.
+- Judge: LLM reviewer that produces PASS/NEEDS_REWORK/BLOCK.
+- needs_input: Artifact contract that captures missing fields and questions.
+- PRECHECK: Graph node that performs cheap validation before RPC.
+- resume: Run continuation endpoint (`POST /v1/runs/{id}/resume`) for NEEDS_INPUT.
+- checkpoint: Persisted graph state keyed by `thread_id = run_id`.
+- user_inputs: Artifact map that stores answers merged during resume.
+
+## Change log
+
+- 2026-01-14: Add final_status, PAUSED, needs_input, PRECHECK.
+- 2026-01-15: Add resume, checkpoint, and user_inputs.

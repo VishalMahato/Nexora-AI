@@ -14,6 +14,8 @@ def client():
 
 @pytest.fixture(autouse=True)
 def _configure_llm(monkeypatch, request):
+    monkeypatch.setenv("ALLOWLIST_TO_ALL", "false")
+    get_settings.cache_clear()
     if request.node.get_closest_marker("use_llm"):
         yield
         return

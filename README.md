@@ -9,6 +9,7 @@ auditable run steps, tool-call logging, and policy gating.
 - Tool-call instrumentation for all external calls
 - Policy engine for risk checks and approval gating
 - Persisted artifacts for resumable runs
+- Run outcomes include `final_status` and `current_step` for UI state
 
 ## Architecture (high level)
 ```
@@ -53,6 +54,8 @@ Required:
 - `ALLOWLIST_TO` (JSON list of allowlisted target addresses)
 
 Optional:
+- `ALLOWLIST_TO_ALL` (true/false, bypass target allowlist checks for local dev)
+- `ALLOWLISTED_TOKENS`, `ALLOWLISTED_ROUTERS`
 - `LLM_MODEL`
 - `LOG_LEVEL`, `LOG_JSON`
 - `LANGSMITH_*`
@@ -74,6 +77,9 @@ Endpoints:
 - `GET  /v1/runs/{id}` fetch run details
 - `GET  /v1/runs/{id}?includeArtifacts=true` fetch run + artifacts
 - `GET  /v1/runs/{id}/tool-calls` tool-call timeline
+
+Run responses include `current_step` and `final_status` to support UI progress
+and gating (approval/execute only proceed when `final_status == READY`).
 
 ## Supported intents (MVP)
 - Native transfers:
