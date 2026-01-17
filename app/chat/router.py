@@ -16,6 +16,8 @@ from app.chat.state_store import get as get_state
 from app.chat.state_store import set as set_state
 from app.chat.tools import get_allowlists, get_token_balance, get_wallet_snapshot
 from app.config import get_settings
+from chain.chains import UnsupportedChainError, list_supported_chains
+from chain.rpc import Web3RPCError
 
 _QUESTION_MAP = {
     "amount_in": "How much do you want to swap?",
@@ -288,6 +290,21 @@ def _unsupported_token_missing_slots(intent_type: str | None) -> list[str]:
     return ["token"]
 
 
+def _unsupported_chain_message(chain_id: int | None) -> str:
+    supported = list_supported_chains()
+    if supported:
+        supported_list = ", ".join(str(cid) for cid in supported)
+        return f"Unsupported chain_id {chain_id}. Supported chains: {supported_list}."
+    return f"Unsupported chain_id {chain_id}. Please provide a supported chain."
+
+
+def _rpc_unavailable_message(chain_id: int | None) -> str:
+    return (
+        f"Unable to reach the RPC for chain_id {chain_id}. "
+        "Please try again or switch to a different RPC endpoint."
+    )
+
+
 def _missing_action_slots(
     intent_type: str,
     slots: dict[str, str],
@@ -363,7 +380,7 @@ def _query_payload(
         data = {"allowlists": allowlists}
         assistant_message = _format_allowlists(allowlists)
 
-    elif intent in {"SNAPSHOT", "WALLET_SNAPSHOT"}:
+    elif intent in {"SNAPSHOT", "WALLET_SNAPSHOT", "BALANCE"}:
         snapshot = get_wallet_snapshot(wallet_address, chain_id)
         data = {"snapshot": snapshot}
         assistant_message = _format_wallet_snapshot(snapshot)
@@ -518,12 +535,55 @@ def _route_from_classification(
                 intent_type=classification.intent_type,
             )
 
-        assistant_message, data = _query_payload(
-            intent,
-            wallet_address=req.wallet_address,
-            chain_id=req.chain_id,
-            slots=classification.slots or {},
-        )
+        try:
+            assistant_message, data = _query_payload(
+                intent,
+                wallet_address=req.wallet_address,
+                chain_id=req.chain_id,
+                slots=classification.slots or {},
+            )
+        except UnsupportedChainError:
+            return _finalize_response(
+                ChatRouteResponse(
+                    mode=IntentMode.CLARIFY,
+                    assistant_message=_unsupported_chain_message(req.chain_id),
+                    questions=_questions_for_missing_slots(["chain_id"]),
+                    classification=IntentClassification(
+                        mode=IntentMode.CLARIFY,
+                        intent_type=classification.intent_type,
+                        confidence=classification.confidence,
+                        slots=classification.slots,
+                        missing_slots=["chain_id"],
+                        reason="unsupported_chain",
+                    ),
+                    conversation_id=req.conversation_id,
+                    pending=False,
+                ),
+                req=req,
+                mode=IntentMode.CLARIFY,
+                intent_type=classification.intent_type,
+            )
+        except Web3RPCError:
+            return _finalize_response(
+                ChatRouteResponse(
+                    mode=IntentMode.CLARIFY,
+                    assistant_message=_rpc_unavailable_message(req.chain_id),
+                    questions=_questions_for_missing_slots(["chain_id"]),
+                    classification=IntentClassification(
+                        mode=IntentMode.CLARIFY,
+                        intent_type=classification.intent_type,
+                        confidence=classification.confidence,
+                        slots=classification.slots,
+                        missing_slots=["chain_id"],
+                        reason="rpc_unavailable",
+                    ),
+                    conversation_id=req.conversation_id,
+                    pending=False,
+                ),
+                req=req,
+                mode=IntentMode.CLARIFY,
+                intent_type=classification.intent_type,
+            )
         if req.conversation_id:
             delete_state(req.conversation_id)
 
@@ -762,6 +822,12 @@ def _normalize_classification(classification: IntentClassification) -> IntentCla
 
 def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
     cleanup_state()
+    settings = get_settings()
+    if settings.demo_mode and settings.demo_wallet_address:
+        updates = {"wallet_address": settings.demo_wallet_address}
+        if settings.demo_chain_id is not None:
+            updates["chain_id"] = settings.demo_chain_id
+        req = req.model_copy(update=updates)
     defer_start = bool((req.metadata or {}).get("defer_start"))
     state = get_state(req.conversation_id) if req.conversation_id else None
     if state and (not state.get("missing_slots") or (not state.get("intent_type") and not state.get("partial_slots"))):
@@ -877,12 +943,57 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
                         intent_type=classification.intent_type,
                     )
 
-                assistant_message, data = _query_payload(
-                    intent,
-                    wallet_address=wallet_address,
-                    chain_id=chain_id,
-                    slots=classification.slots or {},
-                )
+                try:
+                    assistant_message, data = _query_payload(
+                        intent,
+                        wallet_address=wallet_address,
+                        chain_id=chain_id,
+                        slots=classification.slots or {},
+                    )
+                except UnsupportedChainError:
+                    return _finalize_response(
+                        ChatRouteResponse(
+                            mode=IntentMode.CLARIFY,
+                            assistant_message=_unsupported_chain_message(chain_id),
+                            questions=_questions_for_missing_slots(["chain_id"]),
+                            classification=IntentClassification(
+                                mode=IntentMode.CLARIFY,
+                                intent_type=classification.intent_type,
+                                confidence=classification.confidence,
+                                slots=classification.slots,
+                                missing_slots=["chain_id"],
+                                reason="unsupported_chain",
+                            ),
+                            conversation_id=req.conversation_id,
+                            pending=True,
+                            pending_slots=partial_slots,
+                        ),
+                        req=req,
+                        mode=IntentMode.CLARIFY,
+                        intent_type=classification.intent_type,
+                    )
+                except Web3RPCError:
+                    return _finalize_response(
+                        ChatRouteResponse(
+                            mode=IntentMode.CLARIFY,
+                            assistant_message=_rpc_unavailable_message(chain_id),
+                            questions=_questions_for_missing_slots(["chain_id"]),
+                            classification=IntentClassification(
+                                mode=IntentMode.CLARIFY,
+                                intent_type=classification.intent_type,
+                                confidence=classification.confidence,
+                                slots=classification.slots,
+                                missing_slots=["chain_id"],
+                                reason="rpc_unavailable",
+                            ),
+                            conversation_id=req.conversation_id,
+                            pending=True,
+                            pending_slots=partial_slots,
+                        ),
+                        req=req,
+                        mode=IntentMode.CLARIFY,
+                        intent_type=classification.intent_type,
+                    )
                 return _finalize_response(
                     ChatRouteResponse(
                         mode=IntentMode.QUERY,
@@ -956,12 +1067,55 @@ def route_chat(req: ChatRouteRequest, *, db: Session) -> ChatRouteResponse:
                     intent_type=intent_type,
                 )
 
-            assistant_message, data = _query_payload(
-                intent_type,
-                wallet_address=wallet_address,
-                chain_id=chain_id,
-                slots=partial_slots,
-            )
+            try:
+                assistant_message, data = _query_payload(
+                    intent_type,
+                    wallet_address=wallet_address,
+                    chain_id=chain_id,
+                    slots=partial_slots,
+                )
+            except UnsupportedChainError:
+                return _finalize_response(
+                    ChatRouteResponse(
+                        mode=IntentMode.CLARIFY,
+                        assistant_message=_unsupported_chain_message(chain_id),
+                        questions=_questions_for_missing_slots(["chain_id"]),
+                        classification=classification
+                        or _classification_from_state(
+                            intent_type=intent_type,
+                            slots=partial_slots,
+                            missing_slots=["chain_id"],
+                            reason="unsupported_chain",
+                        ),
+                        conversation_id=req.conversation_id,
+                        pending=True,
+                        pending_slots=partial_slots,
+                    ),
+                    req=req,
+                    mode=IntentMode.CLARIFY,
+                    intent_type=intent_type,
+                )
+            except Web3RPCError:
+                return _finalize_response(
+                    ChatRouteResponse(
+                        mode=IntentMode.CLARIFY,
+                        assistant_message=_rpc_unavailable_message(chain_id),
+                        questions=_questions_for_missing_slots(["chain_id"]),
+                        classification=classification
+                        or _classification_from_state(
+                            intent_type=intent_type,
+                            slots=partial_slots,
+                            missing_slots=["chain_id"],
+                            reason="rpc_unavailable",
+                        ),
+                        conversation_id=req.conversation_id,
+                        pending=True,
+                        pending_slots=partial_slots,
+                    ),
+                    req=req,
+                    mode=IntentMode.CLARIFY,
+                    intent_type=intent_type,
+                )
             if req.conversation_id:
                 delete_state(req.conversation_id)
             return _finalize_response(
