@@ -3,6 +3,8 @@ from __future__ import annotations
 from langchain_core.runnables import RunnableConfig
 from sqlalchemy.orm import Session
 
+from ai_risk import RugPullDetector
+from app.config import get_settings
 from app.contracts.agent_result import AgentResult, Explanation, RiskItem
 from db.repos.run_steps_repo import log_step
 from graph.artifacts import append_timeline_event, agent_result_to_timeline, put_artifact
@@ -49,6 +51,21 @@ def security_eval(state: RunState, config: RunnableConfig) -> RunState:
                 )
             )
 
+    settings = get_settings()
+    rug_pull_analysis = RugPullDetector().analyze(
+        artifacts=state.artifacts,
+        chain_id=state.chain_id,
+        allowlisted_tokens=settings.allowlisted_tokens_for_chain(state.chain_id),
+    )
+    for signal in rug_pull_analysis.signals:
+        risk_items.append(
+            RiskItem(
+                severity=signal.severity,
+                title="Rug pull signal",
+                detail=signal.detail,
+            )
+        )
+
     security_result = AgentResult(
         agent="security",
         step_name="SECURITY_EVAL",
@@ -56,6 +73,7 @@ def security_eval(state: RunState, config: RunnableConfig) -> RunState:
         output={
             "policy_result": policy_result.model_dump(),
             "decision": decision.model_dump(),
+            "rug_pull": rug_pull_analysis.model_dump(),
         },
         explanation=Explanation(
             summary=summary,
@@ -65,7 +83,7 @@ def security_eval(state: RunState, config: RunnableConfig) -> RunState:
             next_steps=[],
         ),
         confidence=None,
-        sources=["tx_plan", "simulation", "wallet_snapshot", "allowlist_to"],
+        sources=["tx_plan", "simulation", "wallet_snapshot", "allowlist_to", "rug_pull"],
         errors=None,
     ).to_public_dict()
 
