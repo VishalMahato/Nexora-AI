@@ -18,13 +18,6 @@ class Settings(BaseSettings):
     llm_chat_responses: bool = True
     llm_timeout_s: int = 30
     rpc_urls: str = "" 
-    db_pool_size: int = Field(default=5, alias="DB_POOL_SIZE")
-    db_max_overflow: int = Field(default=5, alias="DB_MAX_OVERFLOW")
-    db_pool_timeout_s: int = Field(default=30, alias="DB_POOL_TIMEOUT_S")
-    db_pool_recycle_s: int = Field(default=1800, alias="DB_POOL_RECYCLE_S")
-    demo_mode: bool = Field(default=False, alias="DEMO_MODE")
-    demo_wallet_address: str = Field(default="", alias="DEMO_WALLET_ADDRESS")
-    demo_chain_id: int | None = Field(default=None, alias="DEMO_CHAIN_ID")
     allowlist_to: str = Field(default="[]", alias="ALLOWLIST_TO")
     allowlist_to_all: bool = Field(default=False, alias="ALLOWLIST_TO_ALL")
     allowlisted_tokens: dict[str, dict[str, dict[str, Any]]] = Field(
@@ -43,37 +36,7 @@ class Settings(BaseSettings):
                     "decimals": 18,
                     "is_native": True,
                 },
-            },
-            "84532": {
-                "USDC": {
-                    "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                    "decimals": 6,
-                },
-                "WETH": {
-                    "address": "0x4200000000000000000000000000000000000006",
-                    "decimals": 18,
-                },
-                "ETH": {
-                    "address": "0x4200000000000000000000000000000000000006",
-                    "decimals": 18,
-                    "is_native": True,
-                },
-            },
-            "11155111": {
-                "USDC": {
-                    "address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                    "decimals": 6,
-                },
-                "WETH": {
-                    "address": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
-                    "decimals": 18,
-                },
-                "ETH": {
-                    "address": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
-                    "decimals": 18,
-                    "is_native": True,
-                },
-            },
+            }
         },
         alias="ALLOWLISTED_TOKENS",
     )
@@ -83,17 +46,7 @@ class Settings(BaseSettings):
                 "UNISWAP_V2_ROUTER": {
                     "address": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
                 }
-            },
-            "84532": {
-                "UNISWAP_V2_ROUTER": {
-                    "address": "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24"
-                }
-            },
-            "11155111": {
-                "UNISWAP_V2_ROUTER": {
-                    "address": "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3"
-                }
-            },
+            }
         },
         alias="ALLOWLISTED_ROUTERS",
     )

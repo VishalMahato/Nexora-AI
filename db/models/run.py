@@ -5,10 +5,10 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, String
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from db.utils.time import utcnow
+from db.utils.json_type import JSONType
+from db.utils.uuid_type import UUIDType
 
 from db.base import Base
 
@@ -32,7 +32,7 @@ class Run(Base):
     __tablename__ = "runs"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUIDType,
         primary_key=True,
         default=uuid.uuid4,
     )
@@ -49,7 +49,7 @@ class Run(Base):
 
     error_code: Mapped[str | None] = mapped_column(String, nullable=True)
     error_message: Mapped[str | None] = mapped_column(String, nullable=True)
-    artifacts: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    artifacts: Mapped[dict] = mapped_column(JSONType, nullable=False, default=dict)
     current_step: Mapped[str | None] = mapped_column(String(64), nullable=True)
     final_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
 

@@ -5,10 +5,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
+from db.utils.json_type import JSONType
+from db.utils.uuid_type import UUIDType
 
 
 def utcnow() -> datetime:
@@ -18,10 +19,10 @@ def utcnow() -> datetime:
 class RunStep(Base):
     __tablename__ = "run_steps"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
 
     run_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUIDType,
         ForeignKey("runs.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -32,8 +33,8 @@ class RunStep(Base):
 
     status: Mapped[str] = mapped_column(String(32), nullable=False)
 
-    input: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    output: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    input: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
+    output: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
 
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
