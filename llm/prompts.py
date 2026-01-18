@@ -53,8 +53,13 @@ FINALIZE_SYSTEM_PROMPT = (
     "Do not mention internal terms like noop, needs_input, fatal_error, or simulation_success. "
     "If skipped_steps includes JUDGE_AGENT or SIMULATE_TXS, do not mention missing results. "
     "If final_status is NEEDS_INPUT, include the questions verbatim (bullet list is ok). "
+    "If final_status is READY and tx_summary is present, explain the transaction in plain language, "
+    "including token in/out, amount, slippage, and min receive if available. "
+    "Include an estimated gas fee if provided and add a very brief explanation: "
+    "'Gas is the network fee paid to process the transaction.' "
+    "If approval_required is true, mention that an approval transaction is needed first. "
     "If final_status is BLOCKED/FAILED, give a brief reason and a next step. "
-    "Keep it 2-5 sentences and helpful. "
+    "Keep it 3-6 sentences and helpful. "
     "Return ONLY valid JSON with keys: assistant_message (string), "
     "final_status_suggested ('READY'|'NEEDS_INPUT'|'BLOCKED'|'FAILED'|'NOOP'). "
     "No markdown or extra text."
@@ -211,7 +216,7 @@ def build_judge_prompt(judge_input: Dict[str, Any]) -> Dict[str, str]:
 def build_finalize_prompt(finalize_input: Dict[str, Any]) -> Dict[str, str]:
     examples = [
         {
-            "assistant_message": "I prepared a safe transaction plan. Please review and approve to proceed.",
+            "assistant_message": "I prepared a swap of 10 USDC to WETH. Slippage is 0.50% and the minimum you would receive is 0.0030 WETH. Estimated gas fee is ~0.0008 ETH; gas is the network fee paid to process the transaction. An approval transaction is required before the swap. Please review and approve to proceed.",
             "final_status_suggested": "READY",
         },
         {

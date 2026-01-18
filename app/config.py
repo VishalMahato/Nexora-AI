@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     llm_chat_responses: bool = True
     llm_timeout_s: int = 30
     rpc_urls: str = "" 
+    db_pool_size: int = Field(default=5, alias="DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=5, alias="DB_MAX_OVERFLOW")
+    db_pool_timeout_s: int = Field(default=30, alias="DB_POOL_TIMEOUT_S")
+    db_pool_recycle_s: int = Field(default=1800, alias="DB_POOL_RECYCLE_S")
     demo_mode: bool = Field(default=False, alias="DEMO_MODE")
     demo_wallet_address: str = Field(default="", alias="DEMO_WALLET_ADDRESS")
     demo_chain_id: int | None = Field(default=None, alias="DEMO_CHAIN_ID")
