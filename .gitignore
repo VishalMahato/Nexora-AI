@@ -28,3 +28,4 @@ docs/explained/*
 # .vscode/
 .DS_Store
 .vscode
+test.db

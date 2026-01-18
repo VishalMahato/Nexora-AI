@@ -19,8 +19,8 @@ def test_chat_query_balance(client):
             },
         ),
         patch(
-            "app.chat.router.get_wallet_snapshot",
-            return_value={"native": {"balanceWei": "1"}, "erc20": [], "allowances": []},
+            "app.chat.router.get_token_balance",
+            return_value={"symbol": "USDC", "balance": "123.45", "decimals": 6, "token": "0x1"},
         ),
     ):
         resp = client.post(
@@ -35,7 +35,8 @@ def test_chat_query_balance(client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["mode"] == IntentMode.QUERY.value
-    assert "snapshot" in body["data"]
+    assert "USDC" in body["assistant_message"]
+    assert body["data"]["balance"]["balance"] == "123.45"
 
 
 def test_chat_query_snapshot(client):

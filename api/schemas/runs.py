@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from typing import Any
 
 
 class ToolCallRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     run_id: UUID
     step_id: UUID | None
@@ -17,9 +19,6 @@ class ToolCallRead(BaseModel):
     error: str | None
     started_at: datetime
     ended_at: datetime | None
-
-    class Config:
-        from_attributes = True
 
 
 class RunCreateRequest(BaseModel):

@@ -64,7 +64,7 @@ class TokenMeta:
 
 def _normalize_symbol(symbol: str) -> str:
     return symbol.strip().upper()
- 
+
 
 def _token_meta(allowlisted_tokens: dict[str, dict[str, Any]], symbol: str) -> TokenMeta:
     lookup = {k.upper(): v for k, v in (allowlisted_tokens or {}).items()}
