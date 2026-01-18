@@ -59,7 +59,8 @@ FINALIZE_SYSTEM_PROMPT = (
     "'Gas is the network fee paid to process the transaction.' "
     "If approval_required is true, mention that an approval transaction is needed first. "
     "If final_status is BLOCKED/FAILED, give a brief reason and a next step. "
-    "Keep it 3-6 sentences and helpful. "
+    "Keep it 3-6 short sentences and helpful. "
+    "Format for readability: one sentence per line, no markdown headers or code blocks. "
     "Return ONLY valid JSON with keys: assistant_message (string), "
     "final_status_suggested ('READY'|'NEEDS_INPUT'|'BLOCKED'|'FAILED'|'NOOP'). "
     "No markdown or extra text."
@@ -216,23 +217,23 @@ def build_judge_prompt(judge_input: Dict[str, Any]) -> Dict[str, str]:
 def build_finalize_prompt(finalize_input: Dict[str, Any]) -> Dict[str, str]:
     examples = [
         {
-            "assistant_message": "I prepared a swap of 10 USDC to WETH. Slippage is 0.50% and the minimum you would receive is 0.0030 WETH. Estimated gas fee is ~0.0008 ETH; gas is the network fee paid to process the transaction. An approval transaction is required before the swap. Please review and approve to proceed.",
+            "assistant_message": "I prepared a swap of 10 USDC to WETH.\nSlippage is 0.50% and the minimum you would receive is 0.0030 WETH.\nEstimated gas fee is ~0.0008 ETH; gas is the network fee paid to process the transaction.\nAn approval transaction is required before the swap.\nPlease review and approve to proceed.",
             "final_status_suggested": "READY",
         },
         {
-            "assistant_message": "I need a bit more detail:\n- Which token are you swapping from?\n- How much do you want to swap?",
+            "assistant_message": "I need a bit more detail.\n- Which token are you swapping from?\n- How much do you want to swap?",
             "final_status_suggested": "NEEDS_INPUT",
         },
         {
-            "assistant_message": "I can't proceed yet because the request is missing required details. Please share the amount and token you want to receive.",
+            "assistant_message": "I can't proceed yet because the request is missing required details.\nPlease share the amount and token you want to receive.",
             "final_status_suggested": "BLOCKED",
         },
         {
-            "assistant_message": "I couldn't complete the request due to an error. Please try again or adjust the request.",
+            "assistant_message": "I couldn't complete the request due to an error.\nPlease try again or adjust the request.",
             "final_status_suggested": "FAILED",
         },
         {
-            "assistant_message": "I couldn't identify an action to take. Tell me what you'd like to do, for example: 'swap 1 USDC to WETH'.",
+            "assistant_message": "I couldn't identify an action to take.\nTell me what you'd like to do, for example: 'swap 1 USDC to WETH'.",
             "final_status_suggested": "NOOP",
         },
     ]
