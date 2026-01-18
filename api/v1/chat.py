@@ -45,10 +45,14 @@ def _sse_event(payload: dict) -> str:
 
 
 @router.post("/route/stream")
-def chat_route_stream(req: ChatRouteRequest, db: Session = Depends(get_db)) -> StreamingResponse:
+def chat_route_stream(req: ChatRouteRequest) -> StreamingResponse:
     def event_stream():
         yield _sse_event({"type": "status", "status": "processing"})
-        response = route_chat(req, db=db)
+        db = SessionLocal()
+        try:
+            response = route_chat(req, db=db)
+        finally:
+            db.close()
         message = response.assistant_message or ""
         for i in range(0, len(message), 48):
             chunk = message[i : i + 48]

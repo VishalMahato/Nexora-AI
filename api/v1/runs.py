@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 # from db.models.run import RunStatus
 
 from db.deps import get_db
+from db.session import SessionLocal
 from db.repos.runs_repo import get_run
 from db.repos.run_steps_repo import list_steps_for_run
 from db.repos.tool_calls_repo import list_tool_calls_for_run
@@ -115,13 +116,18 @@ def get_run_details_endpoint(run_id: UUID, db: Session = Depends(get_db)) -> Get
 
 
 @router.get("/{run_id}/events")
-def stream_run_events(run_id: UUID, db: Session = Depends(get_db)) -> StreamingResponse:
-    run = get_run(db, run_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
+def stream_run_events(run_id: UUID) -> StreamingResponse:
+    db = SessionLocal()
+    try:
+        run = get_run(db, run_id)
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
+        steps = list_steps_for_run(db, run_id=run_id)
+        run_status = run.status
+    finally:
+        db.close()
 
     def event_stream():
-        steps = list_steps_for_run(db, run_id=run_id)
         for step in steps:
             output = step.output if isinstance(step.output, dict) else {}
             summary = output.get("summary")
@@ -144,7 +150,7 @@ def stream_run_events(run_id: UUID, db: Session = Depends(get_db)) -> StreamingR
                 "type": "run_status",
                 "eventId": f"status:{run_id}:{run.status}",
                 "runId": str(run_id),
-                "status": run.status,
+                "status": run_status,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "replay": True,
             }

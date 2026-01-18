@@ -95,6 +95,123 @@ def _compact_simulation(simulation: dict | None) -> dict | None:
     }
 
 
+def _format_amount_from_base_units(amount_wei: int | str | None, decimals: int) -> str | None:
+    try:
+        if amount_wei is None:
+            return None
+        value = int(str(amount_wei))
+    except Exception:
+        return None
+    if decimals <= 0:
+        return str(value)
+    scale = 10 ** decimals
+    whole = value // scale
+    frac = value % scale
+    frac_str = str(frac).rjust(decimals, "0").rstrip("0")
+    if not frac_str:
+        return str(whole)
+    return f"{whole}.{frac_str[:6]}"
+
+
+def _format_slippage_bps(slippage_bps: int | str | None) -> str | None:
+    try:
+        if slippage_bps is None:
+            return None
+        value = int(str(slippage_bps))
+    except Exception:
+        return None
+    return f"{value / 100:.2f}%"
+
+
+def _extract_fee_info(simulation: dict | None) -> tuple[str | None, dict | None]:
+    if not isinstance(simulation, dict):
+        return None, None
+    results = simulation.get("results") or []
+    if not isinstance(results, list):
+        return None, None
+    fee = None
+    gas_estimate = None
+    for result in results:
+        if not isinstance(result, dict):
+            continue
+        gas = result.get("gasEstimate")
+        fee_obj = result.get("fee")
+        if fee_obj and isinstance(fee_obj, dict):
+            fee = fee_obj
+            gas_estimate = gas
+            break
+        if gas and gas_estimate is None:
+            gas_estimate = gas
+    if not fee or gas_estimate is None:
+        return None, None
+    try:
+        gas_int = int(str(gas_estimate))
+    except Exception:
+        return None, None
+    max_fee = fee.get("maxFeePerGas") or fee.get("gasPrice")
+    if max_fee is None:
+        return None, None
+    try:
+        max_fee_int = int(str(max_fee))
+    except Exception:
+        return None, None
+    total_fee = gas_int * max_fee_int
+    fee_eth = _format_amount_from_base_units(total_fee, 18)
+    if not fee_eth:
+        return None, None
+    return fee_eth, {"gasEstimate": gas_estimate, "fee": fee}
+
+
+def _extract_tx_summary(artifacts: dict) -> dict | None:
+    tx_plan = artifacts.get("tx_plan") or {}
+    actions = tx_plan.get("actions") if isinstance(tx_plan, dict) else None
+    actions = actions if isinstance(actions, list) else []
+    quote = artifacts.get("quote") or {}
+    planner_input = artifacts.get("planner_input") or {}
+    allowlisted_tokens = planner_input.get("allowlisted_tokens") or {}
+
+    swap_action = next((a for a in actions if (a.get("action") or "").upper() == "SWAP"), None)
+    approve_action = next((a for a in actions if (a.get("action") or "").upper() == "APPROVE"), None)
+
+    token_in = (swap_action or {}).get("token_in")
+    token_out = (swap_action or {}).get("token_out")
+    amount_in = (swap_action or {}).get("amount_in")
+    slippage_bps = (swap_action or {}).get("slippage_bps")
+    deadline_seconds = (swap_action or {}).get("deadline_seconds")
+
+    quote_min_out = quote.get("minOut")
+    quote_amount_in = quote.get("amountIn")
+    quote_slippage = quote.get("slippageBps")
+
+    token_out_meta = allowlisted_tokens.get(str(token_out).upper()) if token_out else None
+    token_out_decimals = token_out_meta.get("decimals") if isinstance(token_out_meta, dict) else None
+    min_out_human = None
+    if quote_min_out and token_out_decimals is not None:
+        min_out_human = _format_amount_from_base_units(quote_min_out, int(token_out_decimals))
+
+    slippage = _format_slippage_bps(slippage_bps or quote_slippage)
+
+    fee_eth, fee_raw = _extract_fee_info(artifacts.get("simulation"))
+
+    if not swap_action:
+        return None
+
+    return {
+        "type": "swap",
+        "token_in": token_in,
+        "token_out": token_out,
+        "amount_in": amount_in,
+        "min_out": min_out_human,
+        "slippage": slippage,
+        "deadline_seconds": deadline_seconds,
+        "router_key": (swap_action or {}).get("router_key") or quote.get("routerKey"),
+        "approval_required": bool(approve_action),
+        "quote_amount_in": quote_amount_in,
+        "gas_fee_estimate_eth": fee_eth,
+        "gas_fee_details": fee_raw,
+    }
+
+
 def _compact_tx_plan(tx_plan: dict | None) -> dict | None:
     if not isinstance(tx_plan, dict):
         return None
@@ -336,10 +453,27 @@ def _fallback_assistant_message(finalize_input: dict) -> str:
     needs_input = finalize_input.get("needs_input") or {}
     questions = needs_input.get("questions") or []
     block_reason = finalize_input.get("block_reason")
+    tx_summary = finalize_input.get("tx_summary") or {}
+    gas_fee = tx_summary.get("gas_fee_estimate_eth")
+    slippage = tx_summary.get("slippage")
+    min_out = tx_summary.get("min_out")
+    approval_required = tx_summary.get("approval_required")
     if status == "READY":
+        details = []
+        if slippage:
+            details.append(f"Slippage: {slippage}")
+        if min_out:
+            details.append(f"Min receive: {min_out} {tx_summary.get('token_out')}")
+        if gas_fee:
+            details.append(f"Estimated gas fee: ~{gas_fee} ETH")
+        if approval_required:
+            details.append("An approval transaction is required before the swap.")
+        detail_text = "\n".join(details)
+        if detail_text:
+            detail_text = f"\n{detail_text}"
         return (
             "I prepared a safe transaction plan. Please review and approve to proceed."
-            f"\nIntent: {intent}"
+            f"\nIntent: {intent}{detail_text}"
         )
     if status == "NEEDS_INPUT":
         if questions:
@@ -385,6 +519,7 @@ def _build_finalize_input(state: RunState) -> dict:
         "fatal_error": artifacts.get("fatal_error"),
         "block_reason": _extract_block_reason(artifacts),
         "skipped_steps": skipped_steps,
+        "tx_summary": _extract_tx_summary(artifacts),
         "decision": _compact_decision(artifacts.get("decision")),
         "policy_result": _compact_policy(artifacts.get("policy_result")),
         "security_result": _compact_security(artifacts.get("security_result")),
